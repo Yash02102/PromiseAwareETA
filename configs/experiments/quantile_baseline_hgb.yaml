@@ -1,0 +1,24 @@
+model:
+  name: hgb_quantile
+  quantiles: [0.1, 0.5, 0.9]
+  params:
+    max_iter: 600
+    learning_rate: 0.05
+    max_depth: None
+    min_samples_leaf: 50
+    l2_regularization: 0.0
+    random_state: 1729
+
+data:
+  features_path: data/processed/features.parquet
+  target_column: delivery_lag_days
+  features_columns_path: data/processed/features_columns.txt
+  train_period:
+    start: 2017-01-01
+    end: 2017-12-31
+  valid_period:
+    start: 2018-01-01
+    end: 2018-06-30
+
+training:
+  report_metrics: True
