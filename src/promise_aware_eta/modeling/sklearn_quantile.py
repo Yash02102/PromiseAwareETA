@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Mapping, Union
 
 import numpy as np
 import yaml
@@ -15,19 +16,37 @@ from promise_aware_eta.experiments.log_utils import log_experiment_results
 from promise_aware_eta.modeling.datasets import load_experiment_splits
 
 
-def train_linear_quantile(config_path: Path) -> Dict[float, QuantileRegressor]:
-    """Train scikit-learn QuantileRegressor models for each requested quantile."""
-    with open(config_path, "r", encoding="utf-8") as handle:
-        config: Dict = yaml.safe_load(handle)
+ConfigInput = Union[Path, str, os.PathLike[str], Mapping[str, object]]
 
-    X_train, y_train, X_valid, y_valid, _ = load_experiment_splits(config)
-    quantiles = config["model"]["quantiles"]
-    params_cfg = config["model"].get("params", {})
+
+def _resolve_config(config: ConfigInput) -> tuple[Dict, Path]:
+    if isinstance(config, (str, os.PathLike)):
+        config_path = Path(config)
+        with open(config_path, "r", encoding="utf-8") as handle:
+            loaded: Dict = yaml.safe_load(handle)
+        return loaded, config_path
+    if isinstance(config, Path):
+        with config.open("r", encoding="utf-8") as handle:
+            loaded = yaml.safe_load(handle)
+        return loaded, config
+
+    # Mapping input, copy to avoid accidental mutation downstream.
+    loaded = dict(config)
+    return loaded, Path("in-memory-config.yaml")
+
+
+def train_linear_quantile(config: ConfigInput) -> Dict[float, QuantileRegressor]:
+    """Train scikit-learn QuantileRegressor models for each requested quantile."""
+    config_dict, config_path = _resolve_config(config)
+
+    X_train, y_train, X_valid, y_valid, _ = load_experiment_splits(config_dict)
+    quantiles = config_dict["model"]["quantiles"]
+    params_cfg = config_dict["model"].get("params", {})
     if isinstance(params_cfg, dict) and "linear" in params_cfg:
         params = params_cfg["linear"] or {}
     else:
         params = params_cfg
-    training_cfg = config.get("training", {})
+    training_cfg = config_dict.get("training", {})
 
     models: Dict[float, QuantileRegressor] = {}
     metrics: List[dict] = []
@@ -53,19 +72,18 @@ def train_linear_quantile(config_path: Path) -> Dict[float, QuantileRegressor]:
     return models
 
 
-def train_hgb_quantile(config_path: Path) -> Dict[float, HistGradientBoostingRegressor]:
+def train_hgb_quantile(config: ConfigInput) -> Dict[float, HistGradientBoostingRegressor]:
     """Train HistGradientBoostingRegressor in quantile mode for each quantile."""
-    with open(config_path, "r", encoding="utf-8") as handle:
-        config: Dict = yaml.safe_load(handle)
+    config_dict, config_path = _resolve_config(config)
 
-    X_train, y_train, X_valid, y_valid, _ = load_experiment_splits(config)
-    quantiles = config["model"]["quantiles"]
-    params_cfg = config["model"].get("params", {})
+    X_train, y_train, X_valid, y_valid, _ = load_experiment_splits(config_dict)
+    quantiles = config_dict["model"]["quantiles"]
+    params_cfg = config_dict["model"].get("params", {})
     if isinstance(params_cfg, dict) and "hgb" in params_cfg:
         params = params_cfg["hgb"] or {}
     else:
         params = params_cfg
-    training_cfg = config.get("training", {})
+    training_cfg = config_dict.get("training", {})
 
     models: Dict[float, HistGradientBoostingRegressor] = {}
     metrics: List[dict] = []

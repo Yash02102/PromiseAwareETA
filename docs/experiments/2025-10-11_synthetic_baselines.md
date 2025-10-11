@@ -12,6 +12,34 @@
 - Train/validation split uses 2017 orders for training (835 rows) and 2018-H1 for validation (365 rows) per `configs/experiments/synthetic_quantile.yaml`.
 - All runs log to `experiments/logs/results.jsonl` (ignored by git); override with `PROMISE_EXPERIMENT_LOG_DIR` if desired.
 
+### Dispatching models from Python
+
+The experiment runner can now rely on the shared `QuantileModelSpec` dispatcher. Instead of invoking each CLI separately you can
+instantiate a spec and let the helper route to LightGBM, linear, or HistGradientBoosting implementations:
+
+```python
+from promise_aware_eta.modeling import QuantileModelSpec, train_quantile_model
+
+spec = QuantileModelSpec(
+    name="lightgbm",
+    quantiles=[0.1, 0.5, 0.9],
+    params={
+        "lightgbm": {
+            "objective": "quantile",
+            "metric": "quantile",
+            "learning_rate": 0.1,
+        }
+    },
+    data=config["data"],
+    training=config.get("training", {}),
+)
+
+models = train_quantile_model(spec)
+```
+
+The dispatcher accepts in-memory feature frames (via `data["features_df"]`) or file paths. It reuses
+`datasets.load_experiment_splits` to ensure the same filtering logic is applied regardless of backend.
+
 ## Results
 Validation pinball loss (lower is better):
 

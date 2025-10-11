@@ -11,7 +11,11 @@ import pandas as pd
 def load_experiment_splits(config: dict) -> tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series, Sequence[str]]:
     """Load training and validation splits based on an experiment config dict."""
     data_cfg = config["data"]
-    features = pd.read_parquet(data_cfg["features_path"])
+    features_df = data_cfg.get("features_df")
+    if features_df is not None:
+        features = features_df.copy()
+    else:
+        features = pd.read_parquet(data_cfg["features_path"])
 
     feature_cols: Sequence[str] | None = data_cfg.get("feature_columns")
     if not feature_cols:
