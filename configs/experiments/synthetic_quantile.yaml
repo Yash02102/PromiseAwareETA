@@ -1,0 +1,39 @@
+model:
+  name: synthetic_quantile
+  quantiles: [0.1, 0.5, 0.9]
+  params:
+    linear:
+      alpha: 0.01
+      fit_intercept: true
+      solver: 'highs-ds'
+    hgb:
+      max_iter: 400
+      learning_rate: 0.05
+      max_depth: 3
+      min_samples_leaf: 20
+    lightgbm:
+      objective: quantile
+      boosting_type: gbdt
+      learning_rate: 0.05
+      num_leaves: 31
+      min_data_in_leaf: 50
+      feature_fraction: 0.9
+      bagging_fraction: 0.9
+      bagging_freq: 1
+
+data:
+  features_path: data/processed/features.parquet
+  target_column: delivery_lag_days
+  features_columns_path: data/processed/features_columns.txt
+  train_period:
+    start: 2017-01-01
+    end: 2017-12-31
+  valid_period:
+    start: 2018-01-01
+    end: 2018-06-30
+
+training:
+  report_metrics: true
+  num_boost_round: 500
+  early_stopping_rounds: 50
+  seed: 42
