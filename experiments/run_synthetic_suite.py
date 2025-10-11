@@ -7,8 +7,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import yaml
 
-from promise_aware_eta.modeling import trainers
+from promise_aware_eta.modeling import QuantileModelSpec, train_quantile_model, trainers
 
 DATA_DIR = Path("data/processed")
 FEATURES_PATH = DATA_DIR / "features.parquet"
@@ -72,12 +73,27 @@ def generate_synthetic_dataset(force: bool = False) -> None:
     print(f"Generated synthetic dataset with {len(df)} rows at {FEATURES_PATH}.")
 
 
-def run_baseline_experiments(force_regen: bool = False) -> None:
+def run_baseline_experiments(force_regen: bool = False, use_dispatcher: bool = False) -> None:
     generate_synthetic_dataset(force=force_regen)
+    if use_dispatcher:
+        with CONFIG_PATH.open("r", encoding="utf-8") as handle:
+            config = yaml.safe_load(handle)
 
-    for model in ("linear", "hgb", "lightgbm"):
-        print(f"\n=== Training {model} quantile model ===")
-        trainers.run_training(CONFIG_PATH, model=model)  # type: ignore[arg-type]
+        base_params = config["model"].get("params", {})
+        for model in ("linear", "hgb", "lightgbm"):
+            print(f"\n=== Training {model} quantile model (dispatcher) ===")
+            spec = QuantileModelSpec(
+                name=model,
+                quantiles=config["model"]["quantiles"],
+                params=base_params,
+                data=config["data"],
+                training=config.get("training", {}),
+            )
+            train_quantile_model(spec)
+    else:
+        for model in ("linear", "hgb", "lightgbm"):
+            print(f"\n=== Training {model} quantile model ===")
+            trainers.run_training(CONFIG_PATH, model=model)  # type: ignore[arg-type]
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,9 +103,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Regenerate the synthetic dataset even if it already exists.",
     )
+    parser.add_argument(
+        "--use-dispatcher",
+        action="store_true",
+        help="Call the in-code dispatcher instead of invoking the CLI trainer.",
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
-    run_baseline_experiments(force_regen=args.force_regen)
+    run_baseline_experiments(
+        force_regen=args.force_regen,
+        use_dispatcher=args.use_dispatcher,
+    )

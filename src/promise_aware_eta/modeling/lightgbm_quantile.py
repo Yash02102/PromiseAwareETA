@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
-from typing import Dict, Iterable
+from typing import Dict, Iterable, Mapping, Union
 
 import lightgbm as lgb
 import yaml
@@ -16,10 +17,21 @@ from promise_aware_eta.experiments.log_utils import log_experiment_results
 class QuantileGBMTrainer:
     """Train LightGBM models for multiple quantiles using a shared dataset."""
 
-    def __init__(self, config_path: Path):
-        self.config_path = config_path
-        with open(config_path, "r", encoding="utf-8") as handle:
-            self.config: Dict = yaml.safe_load(handle)
+    def __init__(self, config: Mapping[str, object], *, source_path: Path):
+        self.config_path = source_path
+        self.config: Dict = dict(config)
+
+    @classmethod
+    def from_path(cls, config_path: Path) -> "QuantileGBMTrainer":
+        with config_path.open("r", encoding="utf-8") as handle:
+            config: Dict = yaml.safe_load(handle)
+        return cls(config, source_path=config_path)
+
+    @classmethod
+    def from_mapping(
+        cls, config: Mapping[str, object], *, source_path: Path | None = None
+    ) -> "QuantileGBMTrainer":
+        return cls(config, source_path=source_path or Path("in-memory-config.yaml"))
 
     def load_data(self):
         return load_experiment_splits(self.config)
@@ -78,7 +90,15 @@ class QuantileGBMTrainer:
         return boosters
 
 
-def train_from_config(config_path: Path) -> Dict[float, lgb.Booster]:
-    """Train LightGBM quantile models from a yaml config path."""
-    trainer = QuantileGBMTrainer(config_path)
+ConfigInput = Union[Path, str, os.PathLike[str], Mapping[str, object]]
+
+
+def train_from_config(config: ConfigInput) -> Dict[float, lgb.Booster]:
+    """Train LightGBM quantile models from a YAML config path or mapping."""
+    if isinstance(config, Path):
+        trainer = QuantileGBMTrainer.from_path(config)
+    elif isinstance(config, (str, os.PathLike)):
+        trainer = QuantileGBMTrainer.from_path(Path(config))
+    else:
+        trainer = QuantileGBMTrainer.from_mapping(config)
     return trainer.train()
