@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List
 
-import numpy as np
 import yaml
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.linear_model import QuantileRegressor

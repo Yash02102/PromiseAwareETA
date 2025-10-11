@@ -9,9 +9,9 @@ def sample_raw_dir(tmp_path):
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     (raw_dir / TABLE_FILENAMES["orders"]).write_text(
-        "order_id,customer_id,order_purchase_timestamp,order_delivered_customer_date,order_estimated_delivery_date\n"
-        "order_1,cust_1,2017-01-01 10:00:00,2017-01-05 12:00:00,2017-01-06 00:00:00\n"
-        "order_2,cust_2,2017-01-02 09:30:00,2017-01-08 15:00:00,2017-01-07 00:00:00\n"
+        "order_id,customer_id,order_purchase_timestamp,order_approved_at,order_delivered_carrier_date,order_delivered_customer_date,order_estimated_delivery_date\n"
+        "order_1,cust_1,2017-01-01 10:00:00,2017-01-01 10:15:00,2017-01-02 04:00:00,2017-01-05 12:00:00,2017-01-06 00:00:00\n"
+        "order_2,cust_2,2017-01-02 09:30:00,2017-01-02 10:00:00,2017-01-03 06:00:00,2017-01-08 15:00:00,2017-01-07 00:00:00\n"
     )
 
     (raw_dir / TABLE_FILENAMES["order_items"]).write_text(

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pandas as pd
-
 from promise_aware_eta.analysis.eda import load_delivery_durations
 from promise_aware_eta.data_ingestion import RAW_DATA_SUBDIR, load_olist_tables
 from promise_aware_eta.features import build_model_features
