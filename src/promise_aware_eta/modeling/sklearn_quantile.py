@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 from typing import Dict, List, Mapping, Union
 
-import numpy as np
 import yaml
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.linear_model import QuantileRegressor
