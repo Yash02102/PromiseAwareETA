@@ -6,10 +6,13 @@ from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
+import yaml
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.linear_model import QuantileRegressor
 from sklearn.metrics import mean_pinball_loss
-from sklearn.ensemble import HistGradientBoostingRegressor
-import yaml\n\nfrom promise_aware_eta.experiments.log_utils import log_experiment_results\nfrom promise_aware_eta.modeling.datasets import load_experiment_splits
+
+from promise_aware_eta.experiments.log_utils import log_experiment_results
+from promise_aware_eta.modeling.datasets import load_experiment_splits
 
 
 def train_linear_quantile(config_path: Path) -> Dict[float, QuantileRegressor]:
@@ -19,7 +22,11 @@ def train_linear_quantile(config_path: Path) -> Dict[float, QuantileRegressor]:
 
     X_train, y_train, X_valid, y_valid, _ = load_experiment_splits(config)
     quantiles = config["model"]["quantiles"]
-    params = config["model"].get("params", {})
+    params_cfg = config["model"].get("params", {})
+    if isinstance(params_cfg, dict) and "linear" in params_cfg:
+        params = params_cfg["linear"] or {}
+    else:
+        params = params_cfg
     training_cfg = config.get("training", {})
 
     models: Dict[float, QuantileRegressor] = {}
@@ -53,7 +60,11 @@ def train_hgb_quantile(config_path: Path) -> Dict[float, HistGradientBoostingReg
 
     X_train, y_train, X_valid, y_valid, _ = load_experiment_splits(config)
     quantiles = config["model"]["quantiles"]
-    params = config["model"].get("params", {})
+    params_cfg = config["model"].get("params", {})
+    if isinstance(params_cfg, dict) and "hgb" in params_cfg:
+        params = params_cfg["hgb"] or {}
+    else:
+        params = params_cfg
     training_cfg = config.get("training", {})
 
     models: Dict[float, HistGradientBoostingRegressor] = {}
