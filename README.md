@@ -18,6 +18,9 @@ This research project quantifies delivery-time uncertainty per order and optimiz
 - `TASKS.md` actionable task board grouped by horizon.
 - `docs/feature_seller_dispatch.md` seller dispatch feature blueprint.
 - `docs/experiment_tracking.md` tracker evaluation and defaults.
+- `docs/policy_simulator.md` staged offline simulation workflow and artifacts.
+- `docs/fairness_reporting.md` fairness metrics and reporting template.
+- `docs/reproducibility_checklist.md` release readiness checklist.
 
 ## Getting Started
 

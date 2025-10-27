@@ -1,0 +1,197 @@
+"""Run staged experiments: baselines, calibration, policy simulation, and fairness."""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+from typing import Dict, Tuple
+
+import numpy as np
+import pandas as pd
+import yaml
+
+from promise_aware_eta.modeling import QuantileModelSpec, train_quantile_model
+from promise_aware_eta.modeling.calibration import (
+    SplitConformalQuantileCalibrator,
+    compute_coverage_diagnostics,
+)
+from promise_aware_eta.modeling.datasets import load_experiment_splits
+from promise_aware_eta.policy import (
+    PromisePolicy,
+    asymmetric_cost,
+    build_fairness_report,
+    evaluate_policies,
+    evaluate_policy_by_group,
+)
+
+from .run_synthetic_suite import CONFIG_PATH, FEATURES_PATH, generate_synthetic_dataset
+
+RESULTS_DIR = Path("experiments/logs")
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _load_config() -> dict:
+    with CONFIG_PATH.open("r", encoding="utf-8") as handle:
+        return yaml.safe_load(handle)
+
+
+def _load_validation_metadata(config: dict) -> pd.DataFrame:
+    full_df = pd.read_parquet(FEATURES_PATH)
+    purchase_ts = pd.to_datetime(full_df["order_purchase_timestamp"], utc=True)
+    valid_period = config["data"]["valid_period"]
+    valid_mask = (purchase_ts >= pd.Timestamp(valid_period["start"], tz="UTC")) & (
+        purchase_ts <= pd.Timestamp(valid_period["end"], tz="UTC")
+    )
+    return full_df.loc[valid_mask].reset_index(drop=True)
+
+
+def run_stage1_baselines(config: dict) -> Dict[float, object]:
+    """Train the linear baseline quantile models for reuse in later stages."""
+
+    spec = QuantileModelSpec(
+        name="linear",
+        quantiles=config["model"]["quantiles"],
+        params=config["model"].get("params", {}),
+        data=config["data"],
+        training=config.get("training", {}),
+    )
+    print("=== Stage 1: training linear quantile baseline ===")
+    models = train_quantile_model(spec)
+    return models
+
+
+def run_stage2_calibration(models: Dict[float, object], config: dict) -> dict[str, float]:
+    """Perform split-conformal calibration on validation predictions."""
+
+    _, _, X_valid, y_valid, _ = load_experiment_splits(config)
+    if len(y_valid) < 10:
+        raise RuntimeError("Validation split too small for calibration.")
+
+    lower_q, upper_q = min(models.keys()), max(models.keys())
+    lower_model = models[lower_q]
+    upper_model = models[upper_q]
+
+    lower_pred = np.asarray(lower_model.predict(X_valid), dtype=float)
+    upper_pred = np.asarray(upper_model.predict(X_valid), dtype=float)
+
+    calib_size = len(y_valid) // 2
+    y_calib = y_valid.iloc[:calib_size]
+    y_eval = y_valid.iloc[calib_size:]
+    lower_calib = lower_pred[:calib_size]
+    upper_calib = upper_pred[:calib_size]
+    lower_eval = lower_pred[calib_size:]
+    upper_eval = upper_pred[calib_size:]
+
+    target_coverage = config["model"].get("target_coverage", 0.9)
+    alpha = 1 - target_coverage
+
+    calibrator = SplitConformalQuantileCalibrator(alpha=alpha)
+    print("=== Stage 2: split-conformal calibration ===")
+    adjusted = calibrator.calibrate(
+        y_calib=y_calib,
+        lower_calib=lower_calib,
+        upper_calib=upper_calib,
+        lower_pred=lower_eval,
+        upper_pred=upper_eval,
+    )
+    diagnostics = compute_coverage_diagnostics(
+        y_true=y_eval,
+        lower=adjusted["lower"],
+        upper=adjusted["upper"],
+        target_coverage=target_coverage,
+    )
+    return diagnostics.as_dict()
+
+
+def run_stage3_policy_simulation(
+    models: Dict[float, object],
+    config: dict,
+    *,
+    policy_quantiles: Tuple[float, ...] = (0.5, 0.8, 0.9),
+) -> tuple[pd.DataFrame, Dict[float, np.ndarray], np.ndarray]:
+    """Apply the offline policy simulator using validation predictions."""
+
+    _, _, X_valid, y_valid, _ = load_experiment_splits(config)
+    predictions = {
+        quantile: np.asarray(model.predict(X_valid), dtype=float)
+        for quantile, model in models.items()
+        if hasattr(model, "predict")
+    }
+    actual = y_valid.to_numpy(dtype=float)
+    policies = [
+        PromisePolicy(quantile=q, cost_fn=asymmetric_cost, name=f"p{int(q * 100)}")
+        for q in policy_quantiles
+        if q in predictions
+    ]
+    if not policies:
+        raise RuntimeError("No matching quantile predictions for requested policies.")
+
+    print("=== Stage 3: offline policy simulation ===")
+    results = evaluate_policies(policies, actual=actual, quantile_predictions=predictions)
+    results_path = RESULTS_DIR / "stage3_policy_metrics.csv"
+    results.to_csv(results_path, index=False)
+    print(f"Saved policy metrics to {results_path}")
+    return results, predictions, actual
+
+
+def run_stage4_fairness(
+    policy: PromisePolicy,
+    predictions: Dict[float, np.ndarray],
+    actual: np.ndarray,
+    metadata: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Compute seller and region fairness reports for the selected policy."""
+
+    if len(metadata) != len(actual):
+        raise ValueError("Metadata and actual arrays must align in length.")
+
+    seller_metrics = evaluate_policy_by_group(
+        policy,
+        actual=actual,
+        quantile_predictions=predictions,
+        group_labels=metadata["seller_id"],
+    )
+
+    region_metrics = evaluate_policy_by_group(
+        policy,
+        actual=actual,
+        quantile_predictions=predictions,
+        group_labels=metadata["seller_region"],
+    )
+
+    region_report = build_fairness_report(region_metrics, reference_group=None)
+
+    seller_metrics.to_csv(RESULTS_DIR / "stage4_seller_metrics.csv", index=False)
+    region_report.to_csv(RESULTS_DIR / "stage4_region_fairness.csv", index=False)
+    print("Saved fairness reports to experiments/logs/.")
+    return seller_metrics, region_report
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--force-regen", action="store_true", help="Regenerate the synthetic dataset")
+    return parser.parse_args()
+
+
+def main(force_regen: bool = False) -> None:
+    generate_synthetic_dataset(force=force_regen)
+    config = _load_config()
+    metadata = _load_validation_metadata(config)
+    models = run_stage1_baselines(config)
+    diagnostics = run_stage2_calibration(models, config)
+    print("Calibration diagnostics:", diagnostics)
+    policy_metrics, predictions, actual = run_stage3_policy_simulation(models, config)
+
+    # Choose the policy closest to the target coverage for fairness review.
+    quantiles = policy_metrics["quantile"].astype(float).to_list()
+    target = config["model"].get("target_coverage", 0.9)
+    target_quantile = min(quantiles, key=lambda q: abs(q - target))
+    policy = PromisePolicy(quantile=target_quantile, cost_fn=asymmetric_cost)
+    if policy.quantile not in predictions:
+        raise RuntimeError(f"No predictions available for quantile {policy.quantile}.")
+    run_stage4_fairness(policy, predictions, actual, metadata)
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    main(force_regen=args.force_regen)

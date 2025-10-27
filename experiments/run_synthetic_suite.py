@@ -37,6 +37,12 @@ def generate_synthetic_dataset(force: bool = False) -> None:
     purchase_ts = pd.to_datetime(start_date + purchase_days, utc=True)
 
     seller_ids = RNG.choice([f"seller_{i:03d}" for i in range(10)], size=total)
+    regions = ["north", "south", "east", "west"]
+    seller_region_map = {
+        seller: regions[idx % len(regions)]
+        for idx, seller in enumerate(sorted({f"seller_{i:03d}" for i in range(10)}))
+    }
+    seller_region = np.vectorize(seller_region_map.get)(seller_ids)
     distance_km = RNG.gamma(shape=2.0, scale=20.0, size=total)
     dispatch_delay_days = RNG.gamma(shape=2.0, scale=1.0, size=total)
     weekend_purchase = (purchase_ts.weekday >= 5).astype(int)
@@ -52,6 +58,7 @@ def generate_synthetic_dataset(force: bool = False) -> None:
         {
             "order_id": [f"order_{i:05d}" for i in range(total)],
             "seller_id": seller_ids,
+            "seller_region": seller_region,
             "order_purchase_timestamp": purchase_ts,
             "distance_km": distance_km,
             "dispatch_delay_days": dispatch_delay_days,
