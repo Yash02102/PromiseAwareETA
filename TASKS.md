@@ -13,12 +13,12 @@
 ## Phases
 - [x] Implement quantile LightGBM baseline with temporal split validation.
 - [x] Implement split-conformal calibration wrapper and coverage diagnostics.
-- [ ] Build offline policy simulator for quantile selection and cost evaluation.
-- [ ] Define fairness metrics and reporting templates for regional and seller disparity.
-- [ ] Compile reproducibility checklist for final release.
+- [x] Build offline policy simulator for quantile selection and cost evaluation.
+- [x] Define fairness metrics and reporting templates for regional and seller disparity.
+- [x] Compile reproducibility checklist for final release.
 
 ## Experiments (Upcoming)
-- [ ] Execute Stage 1 baseline quantile suite (LightGBM vs. linear vs. HGB).
-- [ ] Run Stage 2 calibration sweep with split-conformal and rolling updates.
-- [ ] Build and validate Stage 3 policy simulator experiments (global vs. segment t).
-- [ ] Complete Stage 4 robustness/fairness runs and summarize findings.\n
+- [x] Execute Stage 1 baseline quantile suite (LightGBM vs. linear vs. HGB).
+- [x] Run Stage 2 calibration sweep with split-conformal and rolling updates.
+- [x] Build and validate Stage 3 policy simulator experiments (global vs. segment t).
+- [x] Complete Stage 4 robustness/fairness runs and summarize findings.
