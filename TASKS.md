@@ -12,7 +12,7 @@
 
 ## Phases
 - [x] Implement quantile LightGBM baseline with temporal split validation.
-- [ ] Implement split-conformal calibration wrapper and coverage diagnostics.
+- [x] Implement split-conformal calibration wrapper and coverage diagnostics.
 - [ ] Build offline policy simulator for quantile selection and cost evaluation.
 - [ ] Define fairness metrics and reporting templates for regional and seller disparity.
 - [ ] Compile reproducibility checklist for final release.
