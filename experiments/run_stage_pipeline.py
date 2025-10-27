@@ -182,10 +182,16 @@ def main(force_regen: bool = False) -> None:
     print("Calibration diagnostics:", diagnostics)
     policy_metrics, predictions, actual = run_stage3_policy_simulation(models, config)
 
-    # Choose the policy closest to the target coverage for fairness review.
-    quantiles = policy_metrics["quantile"].astype(float).to_list()
+    # Choose the policy whose achieved coverage is closest to the target for fairness review.
     target = config["model"].get("target_coverage", 0.9)
-    target_quantile = min(quantiles, key=lambda q: abs(q - target))
+    coverage_values = pd.to_numeric(policy_metrics["coverage"], errors="coerce")
+    valid_coverage = coverage_values.dropna()
+    if valid_coverage.empty:
+        raise RuntimeError("Policy metrics did not include valid coverage values.")
+
+    selected_idx = (valid_coverage - target).abs().idxmin()
+    selected_row = policy_metrics.loc[selected_idx]
+    target_quantile = float(selected_row["quantile"])
     policy = PromisePolicy(quantile=target_quantile, cost_fn=asymmetric_cost)
     if policy.quantile not in predictions:
         raise RuntimeError(f"No predictions available for quantile {policy.quantile}.")
