@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import shutil
 import subprocess
 import zipfile
@@ -110,6 +112,39 @@ def extract_olist_archive(archive_path: Path, destination: Path, force: bool = F
         zf.extractall(destination)
 
 
+def compute_raw_checksums(
+    raw_dir: Path,
+    *,
+    algorithm: str = "sha256",
+    output: Path | None = None,
+) -> dict[str, object]:
+    """Compute checksums for raw CSV files and persist them for reproducibility."""
+
+    resolved_dir = _resolve_raw_directory(Path(raw_dir))
+    files = sorted(resolved_dir.glob("*.csv"))
+    if not files:
+        raise FileNotFoundError(f"No CSV files found under {resolved_dir} to checksum.")
+
+    try:
+        hashlib.new(algorithm)
+    except ValueError as exc:  # pragma: no cover - defensive path for unsupported hashes.
+        raise ValueError(f"Unsupported hash algorithm: {algorithm}") from exc
+
+    checksums: dict[str, str] = {}
+    for csv_path in files:
+        digest = hashlib.new(algorithm)
+        with csv_path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1 << 20), b""):
+                digest.update(chunk)
+        checksums[csv_path.name] = digest.hexdigest()
+
+    payload: dict[str, object] = {"algorithm": algorithm, "files": checksums}
+
+    output_path = output or resolved_dir / "checksums.json"
+    Path(output_path).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return payload
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Data ingestion helpers for the Olist dataset.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -152,6 +187,28 @@ def _parse_args() -> argparse.Namespace:
         help="Overwrite existing extracted files.",
     )
 
+    checksum_parser = subparsers.add_parser(
+        "checksum",
+        help="Compute and persist checksums for raw CSV files.",
+    )
+    checksum_parser.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=Path(RAW_DATA_SUBDIR),
+        help="Directory containing raw Olist CSV files.",
+    )
+    checksum_parser.add_argument(
+        "--algorithm",
+        default="sha256",
+        help="Hash algorithm to use (default: sha256).",
+    )
+    checksum_parser.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Optional path to write the checksum JSON payload.",
+    )
+
     return parser.parse_args()
 
 
@@ -163,6 +220,9 @@ def _main() -> None:
             extract_olist_archive(archive, args.raw_dir, force=args.force)
     elif args.command == "extract":
         extract_olist_archive(args.archive, args.destination, force=args.force)
+    elif args.command == "checksum":
+        payload = compute_raw_checksums(args.raw_dir, algorithm=args.algorithm, output=args.output)
+        print(json.dumps(payload, indent=2))
     else:  # pragma: no cover - argparse enforces valid commands.
         raise ValueError(f"Unsupported command: {args.command}")
 

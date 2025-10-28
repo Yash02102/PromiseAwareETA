@@ -44,4 +44,4 @@ Embed the following table in experiment logs or memos:
 
 - [x] Offline simulator exposes weighted group metrics per policy.
 - [x] Fairness report helper returns tidy tables for dashboards or docs.
-- [ ] Integrate fairness summaries into automated experiment notebooks.
+- [x] Integrate fairness summaries into automated experiment notebooks (Stage 4 exports Markdown via `experiments/run_stage_pipeline.py`).

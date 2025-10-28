@@ -7,6 +7,7 @@ from typing import Dict, Iterable, Sequence
 
 import numpy as np
 import pandas as pd
+from pandas.api.types import is_datetime64_any_dtype, is_numeric_dtype
 
 FEATURE_SNAPSHOT_VERSION = "2025-10-20"
 
@@ -254,3 +255,102 @@ def build_model_features(
 
     features = features.reset_index()
     return features
+
+
+def validate_feature_frame(
+    feature_frame: pd.DataFrame,
+    *,
+    required_columns: Sequence[str] | None = None,
+) -> pd.DataFrame:
+    """Validate a model-ready feature frame for downstream modeling pipelines.
+
+    Parameters
+    ----------
+    feature_frame:
+        The ``DataFrame`` produced by ``build_model_features`` joined with
+        observed delivery outcomes.
+    required_columns:
+        Optional explicit list of columns that must be present. When omitted,
+        the validator enforces the canonical ``order_id`` primary key plus the
+        timestamp and target columns used across experiments.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The original frame when validation succeeds. Returning the frame makes
+        it convenient to chain the validator in pipeline code.
+
+    Raises
+    ------
+    ValueError
+        If required columns are missing, contain null values, or include
+        duplicated ``order_id`` rows.
+    TypeError
+        If feature columns are not numeric or timestamps are not timezone-aware
+        datetime values.
+    """
+
+    if feature_frame.empty:
+        raise ValueError("Feature frame is empty; expected at least one row.")
+
+    canonical_required = [
+        "order_id",
+        "order_purchase_timestamp",
+        "delivery_lag_days",
+    ]
+    required = set(required_columns or canonical_required)
+    missing = required.difference(feature_frame.columns)
+    if missing:
+        raise ValueError(f"Feature frame missing required columns: {sorted(missing)}")
+
+    if feature_frame["order_id"].duplicated().any():
+        raise ValueError("Feature frame contains duplicate order_id values.")
+
+    purchase_ts = feature_frame["order_purchase_timestamp"]
+    if not is_datetime64_any_dtype(purchase_ts):
+        raise TypeError("order_purchase_timestamp must be a datetime column.")
+    if purchase_ts.dt.tz is None:
+        raise TypeError("order_purchase_timestamp must include timezone information (UTC).")
+    if purchase_ts.isna().any():
+        raise ValueError("order_purchase_timestamp contains null values after preprocessing.")
+
+    target = feature_frame["delivery_lag_days"]
+    if not is_numeric_dtype(target):
+        raise TypeError("delivery_lag_days must be numeric.")
+    if target.isna().any():
+        raise ValueError("delivery_lag_days contains null values after preprocessing.")
+
+    metadata_cols = {
+        "order_id",
+        "order_purchase_timestamp",
+        "delivery_lag_days",
+        "delivered_ts",
+        "estimated_delivery_ts",
+        "promise_gap_days",
+        "is_late_vs_estimated",
+        "customer_id",
+    }
+    numeric_feature_cols = [
+        col
+        for col in feature_frame.columns
+        if col not in metadata_cols
+    ]
+
+    for column in numeric_feature_cols:
+        series = feature_frame[column]
+        if not is_numeric_dtype(series):
+            raise TypeError(f"Feature column '{column}' must be numeric.")
+        if series.isna().any():
+            raise ValueError(f"Feature column '{column}' contains null values.")
+        if np.isinf(series.to_numpy(dtype=float, copy=False)).any():
+            raise ValueError(f"Feature column '{column}' contains infinite values.")
+
+    return feature_frame
+
+
+__all__ = [
+    "FeatureBuilderConfig",
+    "compute_seller_dispatch_features",
+    "build_model_features",
+    "validate_feature_frame",
+]
