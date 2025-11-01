@@ -207,10 +207,8 @@ marimo/_lsp/
 __marimo__/
 analysis/eda_summary.csv
 analysis/*_results.csv
-analysis/figures/*.png
 experiments/logs/
 !experiments/logs/.gitkeep
-docs/figures/*.png
 data/processed/*.parquet
 data/processed/features_columns.txt
 
