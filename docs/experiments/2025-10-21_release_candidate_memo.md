@@ -14,7 +14,7 @@
 
 ## Runbook
 1. `make features` — refreshes processed dataset, invokes schema validation (`validate_feature_frame`).
-2. `uv run python -m experiments.run_stage_pipeline` — orchestrates stages 1–4, writes diagnostics and fairness markdown for direct notebook embedding.
+2. `uv run python -m experiments.run_stage_pipeline --config configs/experiments/quantile_baseline_lightgbm.yaml --model lightgbm` — orchestrates stages 1–4 on the production LightGBM stack, writing diagnostics and fairness markdown for direct notebook embedding. Omit the flags to reproduce the synthetic baseline.
 3. `analysis/notebook_preamble.capture_environment_metadata("analysis/reports/env_snapshot.json")` — capture environment metadata for notebooks before sharing results.
 
 ## Outstanding Observations

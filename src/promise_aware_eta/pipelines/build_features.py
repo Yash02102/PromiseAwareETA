@@ -43,6 +43,9 @@ def main(raw_dir: Path = RAW_DIR) -> None:
             "promise_gap_days",
             "is_late_vs_estimated",
             "customer_id",
+            "seller_id",
+            "seller_state",
+            "seller_region",
         }
     ]
 
