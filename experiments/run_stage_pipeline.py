@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 from typing import Dict, Tuple
 
+import json
 import numpy as np
 import pandas as pd
 import yaml
@@ -24,10 +25,80 @@ from promise_aware_eta.policy import (
     evaluate_policy_by_group,
 )
 
-from .run_synthetic_suite import CONFIG_PATH, FEATURES_PATH, generate_synthetic_dataset
+try:  # pragma: no cover - import resolution flexibility for scripts/tests.
+    from .run_synthetic_suite import (
+        CONFIG_PATH,
+        FEATURES_PATH,
+        generate_synthetic_dataset,
+    )
+except ImportError:  # pragma: no cover - executed when module loaded without package context.
+    from experiments.run_synthetic_suite import (  # type: ignore[no-redef]
+        CONFIG_PATH,
+        FEATURES_PATH,
+        generate_synthetic_dataset,
+    )
 
 RESULTS_DIR = Path("experiments/logs")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+FAIRNESS_MARKDOWN_PATH = RESULTS_DIR / "stage4_region_fairness.md"
+
+
+def _fairness_report_markdown(report: pd.DataFrame) -> str:
+    """Return a compact markdown table summarizing disparity metrics."""
+
+    if report.empty:
+        raise ValueError("Fairness report must contain at least one row.")
+
+    pivot = report.pivot(
+        index="group",
+        columns="metric",
+        values=["value", "difference_from_reference", "ratio_to_reference"],
+    )
+    required_metrics = {"coverage", "expected_cost"}
+    available_metrics = set(pivot.columns.get_level_values(1))
+    if not required_metrics.issubset(available_metrics):
+        missing = required_metrics.difference(available_metrics)
+        raise ValueError(f"Fairness report missing required metrics: {sorted(missing)}")
+
+    coverage = pivot[("value", "coverage")]
+    coverage_delta = pivot[("difference_from_reference", "coverage")]
+    cost_value = pivot[("value", "expected_cost")]
+    cost_ratio = pivot[("ratio_to_reference", "expected_cost")]
+
+    summary = pd.DataFrame(
+        {
+            "Group": coverage.index,
+            "Coverage": coverage.to_numpy(),
+            "Δ Coverage": coverage_delta.to_numpy(),
+            "Expected Cost": cost_value.to_numpy(),
+            "Cost Ratio": cost_ratio.to_numpy(),
+        }
+    )
+
+    summary = summary.sort_values("Coverage", ascending=False)
+
+    def _fmt(value: float) -> str:
+        return f"{value:.3f}"
+
+    header = ["Group", "Coverage", "Δ Coverage", "Expected Cost", "Cost Ratio"]
+    lines = ["| " + " | ".join(header) + " |"]
+    lines.append("| " + " | ".join(["---"] * len(header)) + " |")
+    for _, row in summary.iterrows():
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    str(row["Group"]),
+                    _fmt(row["Coverage"]),
+                    _fmt(row["Δ Coverage"]),
+                    _fmt(row["Expected Cost"]),
+                    _fmt(row["Cost Ratio"]),
+                ]
+            )
+            + " |"
+        )
+
+    return "\n".join(lines)
 
 
 def _load_config() -> dict:
@@ -100,7 +171,12 @@ def run_stage2_calibration(models: Dict[float, object], config: dict) -> dict[st
         upper=adjusted["upper"],
         target_coverage=target_coverage,
     )
-    return diagnostics.as_dict()
+    payload = diagnostics.as_dict()
+    (RESULTS_DIR / "stage2_calibration_diagnostics.json").write_text(
+        json.dumps(payload, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return payload
 
 
 def run_stage3_policy_simulation(
@@ -163,6 +239,8 @@ def run_stage4_fairness(
 
     seller_metrics.to_csv(RESULTS_DIR / "stage4_seller_metrics.csv", index=False)
     region_report.to_csv(RESULTS_DIR / "stage4_region_fairness.csv", index=False)
+    markdown = _fairness_report_markdown(region_report)
+    FAIRNESS_MARKDOWN_PATH.write_text(markdown, encoding="utf-8")
     print("Saved fairness reports to experiments/logs/.")
     return seller_metrics, region_report
 

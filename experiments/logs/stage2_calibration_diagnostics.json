@@ -1,0 +1,8 @@
+{
+  "coverage": 0.825136612021858,
+  "target_coverage": 0.9,
+  "miscoverage_error": -0.07486338797814207,
+  "lower_violation_rate": 0.08196721311475409,
+  "upper_violation_rate": 0.09289617486338798,
+  "mean_interval_width": 6.109929256571998
+}

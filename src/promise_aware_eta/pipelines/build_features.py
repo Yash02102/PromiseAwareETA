@@ -6,7 +6,7 @@ from pathlib import Path
 
 from promise_aware_eta.analysis.eda import load_delivery_durations
 from promise_aware_eta.data_ingestion import RAW_DATA_SUBDIR, load_olist_tables
-from promise_aware_eta.features import build_model_features
+from promise_aware_eta.features import build_model_features, validate_feature_frame
 
 RAW_DIR = Path(RAW_DATA_SUBDIR)
 OUTPUT_DIR = Path("data/processed")
@@ -24,6 +24,8 @@ def main(raw_dir: Path = RAW_DIR) -> None:
     dataset = feature_matrix.join(durations, on="order_id", how="inner")
     dataset = dataset.rename(columns={"purchase_ts": "order_purchase_timestamp"})
     dataset = dataset.dropna(subset=["order_purchase_timestamp", "delivery_lag_days"])
+
+    validate_feature_frame(dataset)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     dataset.to_parquet(FEATURES_PARQUET, index=False)
