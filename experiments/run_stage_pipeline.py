@@ -107,9 +107,16 @@ def _load_config(config_path: Path) -> dict:
 
 
 def _load_validation_metadata(config: dict) -> pd.DataFrame:
-    full_df = pd.read_parquet(FEATURES_PATH)
+    data_cfg = config["data"]
+    features_df = data_cfg.get("features_df")
+    if features_df is not None:
+        full_df = features_df.copy()
+    else:
+        features_path = data_cfg.get("features_path", FEATURES_PATH)
+        full_df = pd.read_parquet(features_path)
+
     purchase_ts = pd.to_datetime(full_df["order_purchase_timestamp"], utc=True)
-    valid_period = config["data"]["valid_period"]
+    valid_period = data_cfg["valid_period"]
     valid_mask = (purchase_ts >= pd.Timestamp(valid_period["start"], tz="UTC")) & (
         purchase_ts <= pd.Timestamp(valid_period["end"], tz="UTC")
     )
