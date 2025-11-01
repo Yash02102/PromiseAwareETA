@@ -101,32 +101,39 @@ def _fairness_report_markdown(report: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-def _load_config() -> dict:
-    with CONFIG_PATH.open("r", encoding="utf-8") as handle:
+def _load_config(config_path: Path) -> dict:
+    with config_path.open("r", encoding="utf-8") as handle:
         return yaml.safe_load(handle)
 
 
 def _load_validation_metadata(config: dict) -> pd.DataFrame:
-    full_df = pd.read_parquet(FEATURES_PATH)
+    data_cfg = config["data"]
+    features_df = data_cfg.get("features_df")
+    if features_df is not None:
+        full_df = features_df.copy()
+    else:
+        features_path = data_cfg.get("features_path", FEATURES_PATH)
+        full_df = pd.read_parquet(features_path)
+
     purchase_ts = pd.to_datetime(full_df["order_purchase_timestamp"], utc=True)
-    valid_period = config["data"]["valid_period"]
+    valid_period = data_cfg["valid_period"]
     valid_mask = (purchase_ts >= pd.Timestamp(valid_period["start"], tz="UTC")) & (
         purchase_ts <= pd.Timestamp(valid_period["end"], tz="UTC")
     )
     return full_df.loc[valid_mask].reset_index(drop=True)
 
 
-def run_stage1_baselines(config: dict) -> Dict[float, object]:
-    """Train the linear baseline quantile models for reuse in later stages."""
+def run_stage1_baselines(config: dict, *, model_name: str = "linear") -> Dict[float, object]:
+    """Train the requested quantile baseline models for reuse in later stages."""
 
     spec = QuantileModelSpec(
-        name="linear",
+        name=model_name,
         quantiles=config["model"]["quantiles"],
         params=config["model"].get("params", {}),
         data=config["data"],
         training=config.get("training", {}),
     )
-    print("=== Stage 1: training linear quantile baseline ===")
+    print(f"=== Stage 1: training {model_name} quantile baseline ===")
     models = train_quantile_model(spec)
     return models
 
@@ -247,15 +254,35 @@ def run_stage4_fairness(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--force-regen", action="store_true", help="Regenerate the synthetic dataset")
+    parser.add_argument(
+        "--force-regen",
+        action="store_true",
+        help="Regenerate the synthetic dataset when using the default synthetic config.",
+    )
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=CONFIG_PATH,
+        help=(
+            "Path to the experiment configuration YAML. Defaults to the synthetic "
+            "quantile baseline."
+        ),
+    )
+    parser.add_argument(
+        "--model",
+        choices=("linear", "hgb", "lightgbm"),
+        default="linear",
+        help="Quantile model backend for Stage 1 training.",
+    )
     return parser.parse_args()
 
 
-def main(force_regen: bool = False) -> None:
-    generate_synthetic_dataset(force=force_regen)
-    config = _load_config()
+def main(*, force_regen: bool, config_path: Path, model_name: str) -> None:
+    if config_path.resolve() == CONFIG_PATH.resolve():
+        generate_synthetic_dataset(force=force_regen)
+    config = _load_config(config_path)
     metadata = _load_validation_metadata(config)
-    models = run_stage1_baselines(config)
+    models = run_stage1_baselines(config, model_name=model_name)
     diagnostics = run_stage2_calibration(models, config)
     print("Calibration diagnostics:", diagnostics)
     policy_metrics, predictions, actual = run_stage3_policy_simulation(models, config)
@@ -278,4 +305,4 @@ def main(force_regen: bool = False) -> None:
 
 if __name__ == "__main__":
     args = parse_args()
-    main(force_regen=args.force_regen)
+    main(force_regen=args.force_regen, config_path=args.config, model_name=args.model)

@@ -16,6 +16,41 @@ SELLER_DISPATCH_RECENT_WINDOW_DAYS = 14
 SELLER_DISPATCH_MIN_HISTORY = 10
 _SECONDS_IN_DAY = 86_400
 
+STATE_TO_REGION: Dict[str, str] = {
+    # North
+    "AC": "north",
+    "AP": "north",
+    "AM": "north",
+    "PA": "north",
+    "RO": "north",
+    "RR": "north",
+    "TO": "north",
+    # Northeast
+    "AL": "northeast",
+    "BA": "northeast",
+    "CE": "northeast",
+    "MA": "northeast",
+    "PB": "northeast",
+    "PE": "northeast",
+    "PI": "northeast",
+    "RN": "northeast",
+    "SE": "northeast",
+    # Central-West
+    "DF": "central-west",
+    "GO": "central-west",
+    "MT": "central-west",
+    "MS": "central-west",
+    # Southeast
+    "ES": "southeast",
+    "MG": "southeast",
+    "RJ": "southeast",
+    "SP": "southeast",
+    # South
+    "PR": "south",
+    "RS": "south",
+    "SC": "south",
+}
+
 
 @dataclass
 class FeatureBuilderConfig:
@@ -233,6 +268,26 @@ def build_model_features(
             order_level_dispatch = order_level_dispatch.astype(float)
             features = features.join(order_level_dispatch, how="left")
 
+    seller_metadata_joined = False
+    if order_items is not None:
+        primary_seller = (
+            order_items.sort_values(["order_id", "order_item_id"]).groupby("order_id").agg(
+                seller_id=("seller_id", "first")
+            )
+        )
+        features = features.join(primary_seller, how="left")
+        sellers = tables.get("sellers")
+        if sellers is not None and "seller_state" in sellers.columns:
+            seller_info = sellers[["seller_id", "seller_state"]].copy()
+            seller_info["seller_state"] = seller_info["seller_state"].str.upper()
+            seller_info["seller_region"] = seller_info["seller_state"].map(STATE_TO_REGION)
+            features = features.join(
+                seller_info.set_index("seller_id"),
+                on="seller_id",
+                how="left",
+            )
+            seller_metadata_joined = True
+
     if cfg.include_temporal:
         orders["order_purchase_timestamp"] = pd.to_datetime(
             orders["order_purchase_timestamp"], utc=True
@@ -248,10 +303,19 @@ def build_model_features(
             temporal.drop(columns=["order_purchase_timestamp"]), how="left"
         )
 
-    features = features.fillna(0)
-
     numeric_cols = features.select_dtypes(include=[np.number]).columns
-    features[numeric_cols] = features[numeric_cols].astype(float)
+    features[numeric_cols] = features[numeric_cols].fillna(0).astype(float)
+
+    if seller_metadata_joined:
+        features["seller_region"] = features["seller_region"].fillna("unknown")
+
+    string_cols = [
+        col
+        for col in ["seller_id", "seller_state", "seller_region"]
+        if col in features.columns
+    ]
+    for column in string_cols:
+        features[column] = features[column].fillna("unknown").astype(str)
 
     features = features.reset_index()
     return features
@@ -329,6 +393,9 @@ def validate_feature_frame(
         "promise_gap_days",
         "is_late_vs_estimated",
         "customer_id",
+        "seller_id",
+        "seller_state",
+        "seller_region",
     }
     numeric_feature_cols = [
         col
