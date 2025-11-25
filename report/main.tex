@@ -15,6 +15,8 @@
 \usepackage{microtype}
 \usepackage{setspace}
 \usepackage{caption}
+\usepackage{tabularx}
+\usepackage{booktabs}
 
 % Figures folder (compile from repo root: pdflatex report/main.tex)
 \graphicspath{{C:/UT Austin MS CS/CML/PromiseAwareETA/figures/}}  % put all PNG/PDF figures here
@@ -29,7 +31,7 @@
 \title{Promise-Aware ETA: Calibrated Delivery-Time Uncertainty and Offline Delivery-Promise Optimization on the Olist E-Commerce Dataset}
 
 \author{
-  Your Name\thanks{Affiliation, address, email.}
+  Yash Rathod\thanks{ysr255@my.utexas.edu}
 }
 
 \date{\today}
@@ -245,14 +247,19 @@ Table~\ref{tab:policies} compares the p50 and p90 policies on the validation set
   \centering
   \caption{Policy metrics for two quantile-based promise policies on the Olist validation set. The cost uses $\lambda_{\text{late}}=5$ and $\lambda_{\text{early}}=1$.}
   \label{tab:policies}
-  \begin{tabular}{lcccccc}
-    \toprule
-    Policy & Quantile & Coverage & Avg.\ P. & Avg.\ A. & Avg.\ Late & Avg.\ Early & Exp.\ Cost \\
-    \midrule
-    p50 & 0.5 & 0.511 & 11.02 & 13.33 & 4.11 & 1.80 & 22.35 \\
-    p90 & 0.9 & 0.842 & 19.98 & 13.33 & 1.47 & 8.12 & 15.44 \\
-    \bottomrule
-  \end{tabular}
+  % Slightly tighter columns so the table fits within the text width
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.1}
+  \resizebox{\linewidth}{!}{%
+    \begin{tabular}{lcccccc}
+      \toprule
+      Policy & Quantile & Coverage & Avg.\ P. & Avg.\ A. & Avg.\ Late & Avg.\ Early & Exp.\ Cost \\
+      \midrule
+      p50 & 0.5 & 0.511 & 11.02 & 13.33 & 4.11 & 1.80 & 22.35 \\
+      p90 & 0.9 & 0.842 & 19.98 & 13.33 & 1.47 & 8.12 & 15.44 \\
+      \bottomrule
+    \end{tabular}%
+  }
 \end{table}
 
 Figure~\ref{fig:f5-lpr-apd} shows that moving from the median-based policy to a higher quantile substantially decreases late-promise rate at the cost of longer promises. Because late days are penalized more, the p90 policy has lower expected cost than p50, despite the longer promises.
@@ -281,17 +288,21 @@ Figure~\ref{fig:f7-region-coverage} and Table~\ref{tab:regions} summarize region
   \centering
   \caption{Regional fairness metrics for the p90 policy. Coverage and expected cost are reported along with differences and ratios to reference regions.}
   \label{tab:regions}
-  \begin{tabular}{lrrrr}
-    \toprule
-    Region & Coverage & $\Delta$Cov vs.\ CW & Exp.\ Cost & Cost Ratio vs.\ NE \\
-    \midrule
-    Central-West & 0.873 & 0.000 & 14.69 & 0.88 \\
-    South        & 0.850 & -0.023 & 15.37 & 0.92 \\
-    Northeast    & 0.848 & -0.025 & 16.73 & 1.00 \\
-    Southeast    & 0.841 & -0.032 & 15.44 & 0.96 \\
-    North        & 0.600 & -0.273 & 11.62 & 0.69 \\
-    \bottomrule
-  \end{tabular}
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.1}
+  \resizebox{\linewidth}{!}{%
+    \begin{tabular}{lrrrr}
+      \toprule
+      Region & Coverage & $\Delta$Cov vs.\ CW & Exp.\ Cost & Cost Ratio vs.\ NE \\
+      \midrule
+      Central-West & 0.873 & 0.000 & 14.69 & 0.88 \\
+      South        & 0.850 & -0.023 & 15.37 & 0.92 \\
+      Northeast    & 0.848 & -0.025 & 16.73 & 1.00 \\
+      Southeast    & 0.841 & -0.032 & 15.44 & 0.96 \\
+      North        & 0.600 & -0.273 & 11.62 & 0.69 \\
+      \bottomrule
+    \end{tabular}%
+  }
 \end{table}
 
 \begin{figure}[t]
@@ -376,9 +387,6 @@ Important limitations include:
 This report has presented Promise-Aware ETA, a reproducible pipeline for calibrated delivery-time uncertainty modeling and offline delivery-promise optimization on the Olist dataset. LightGBM-based quantile models, calibrated through split conformal prediction, provide near-nominal coverage. When coupled with quantile-based promise policies and an asymmetric cost function, these models yield promise strategies that are both more reliable and more cost-effective than naive median-based baselines. Fairness diagnostics highlight heterogeneous performance across regions and sellers.
 
 Future work includes extending the policy class to richer, feature-dependent policies; incorporating fairness constraints directly into policy optimization; and integrating real-time signals in an online evaluation.
-
-\section*{Acknowledgments}
-[Optional: acknowledge advisors, collaborators, or funding sources.]
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{99}
