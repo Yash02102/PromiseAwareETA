@@ -16,7 +16,6 @@
 \usepackage{setspace}
 \usepackage{caption}
 \usepackage{tabularx}
-\usepackage{booktabs}
 
 % Figures folder (compile from repo root: pdflatex report/main.tex)
 \graphicspath{{C:/UT Austin MS CS/CML/PromiseAwareETA/figures/}}  % put all PNG/PDF figures here
@@ -31,7 +30,7 @@
 \title{Promise-Aware ETA: Calibrated Delivery-Time Uncertainty and Offline Delivery-Promise Optimization on the Olist E-Commerce Dataset}
 
 \author{
-  Yash Rathod\thanks{ysr255@my.utexas.edu}
+  Yash Rathod
 }
 
 \date{\today}
@@ -106,10 +105,10 @@ The Brazilian E-Commerce Public Dataset by Olist is a public Kaggle dataset with
 
 \subsection{Target definition}
 The target variable is the approval-to-delivery lag in days:
-\[
-  Y = \max\{0, \texttt{order\_delivered\_customer\_date} - \texttt{order\_approved\_at}\},
-\]
-where dates are converted to a common timezone and the lag is measured in fractional days and rounded to one decimal place. Orders with missing or inconsistent timestamps (for example, delivered before approval) are removed.
+\begin{equation}
+  Y = \max\bigl\{0,\; t_{\text{delivered}} - t_{\text{approved}}\bigr\},
+\end{equation}
+where $t_{\text{delivered}}$ and $t_{\text{approved}}$ denote the delivery and approval timestamps, respectively. Orders with missing or inconsistent timestamps (for example, delivered before approval) are removed.
 
 \subsection{Feature engineering}
 Feature generation is performed through a structured pipeline. Major feature families include:
@@ -247,11 +246,10 @@ Table~\ref{tab:policies} compares the p50 and p90 policies on the validation set
   \centering
   \caption{Policy metrics for two quantile-based promise policies on the Olist validation set. The cost uses $\lambda_{\text{late}}=5$ and $\lambda_{\text{early}}=1$.}
   \label{tab:policies}
-  % Slightly tighter columns so the table fits within the text width
   \setlength{\tabcolsep}{4pt}
   \renewcommand{\arraystretch}{1.1}
   \resizebox{\linewidth}{!}{%
-    \begin{tabular}{lcccccc}
+    \begin{tabular}{lccccccc}
       \toprule
       Policy & Quantile & Coverage & Avg.\ P. & Avg.\ A. & Avg.\ Late & Avg.\ Early & Exp.\ Cost \\
       \midrule
@@ -388,6 +386,9 @@ This report has presented Promise-Aware ETA, a reproducible pipeline for calibra
 
 Future work includes extending the policy class to richer, feature-dependent policies; incorporating fairness constraints directly into policy optimization; and integrating real-time signals in an online evaluation.
 
+\section*{Acknowledgments}
+[Optional: acknowledge advisors, collaborators, or funding sources.]
+
 \bibliographystyle{plainnat}
 \begin{thebibliography}{99}
 
@@ -427,7 +428,7 @@ A.~Gupta et~al.
 \newblock In \emph{Proceedings of The Web Conference}, 2022.
 
 \bibitem[Jiang and Li(2016)]{jiang2016doubly}
-N.~Jiang and L.~Li}.
+N.~Jiang and L.~Li.
 \newblock Doubly robust off-policy value evaluation for reinforcement learning.
 \newblock In \emph{Proceedings of ICML}, 2016.
 

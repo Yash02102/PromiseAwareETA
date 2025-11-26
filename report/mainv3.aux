@@ -1,0 +1,114 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{koenker1978,koenker2001,lightgbm2017,zhang2023calibration}
+\citation{romano2019conformalized,angelopoulos2021gentle}
+\citation{olistdataset}
+\citation{olistdataset}
+\citation{brunilogistics2023,rokoss2024deliverytime}
+\citation{walmart2019cdt,kardinal2025lastmile}
+\citation{brunilogistics2023}
+\@writefile{toc}{\contentsline {paragraph}{Research questions.}{2}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Contributions.}{2}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Delivery-time prediction and e-commerce logistics}{2}{subsection.2.1}\protected@file@percent }
+\citation{koenker1978,koenker2001}
+\citation{biau2024pinball,tagasovska2019epinball}
+\citation{lightgbm2017}
+\citation{vovk2005algorithmic,angelopoulos2021gentle}
+\citation{romano2019conformalized}
+\citation{sousa2024adaptive,zhang2023calibration}
+\citation{guo2017calibration,levi2022uncertainty}
+\citation{barocas2019fairness,pleiss2017fairness,kleinberg2017impossibility}
+\citation{gupta2022fairfoody,martinez2024fairrouting}
+\citation{dudik2011doubly,jiang2016doubly}
+\citation{olistdataset}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Quantile regression and pinball loss}{3}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Conformal prediction and calibration}{3}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Fairness and offline policy evaluation}{3}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Materials and Data Sources}{3}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Dataset}{3}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Target definition}{4}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Feature engineering}{4}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Train--validation split}{4}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Methods}{4}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Problem formulation}{4}{subsection.4.1}\protected@file@percent }
+\citation{lightgbm2017}
+\citation{romano2019conformalized}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Pinball loss by quantile $\tau $ for baseline models on a synthetic benchmark dataset. Lower is better.}}{5}{figure.caption.4}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:f1-pinball}{{1}{5}{Pinball loss by quantile $\tau $ for baseline models on a synthetic benchmark dataset. Lower is better}{figure.caption.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Base quantile models}{5}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Split-conformal calibration}{5}{subsection.4.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Reliability diagram: empirical coverage vs.\ nominal target coverage for the calibrated model on the Olist validation set. The dashed line indicates perfect calibration.}}{5}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:f2-reliability}{{2}{5}{Reliability diagram: empirical coverage vs.\ nominal target coverage for the calibrated model on the Olist validation set. The dashed line indicates perfect calibration}{figure.caption.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Mean prediction interval width (in days) as a function of target coverage for the conformalized quantile model.}}{5}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:f3-width-coverage}{{3}{5}{Mean prediction interval width (in days) as a function of target coverage for the conformalized quantile model}{figure.caption.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Promise policies and asymmetric cost}{5}{subsection.4.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Expected asymmetric cost as a function of promise quantile $\tau $ for quantile-based policies.}}{6}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:f4-cost-tau}{{4}{6}{Expected asymmetric cost as a function of promise quantile $\tau $ for quantile-based policies}{figure.caption.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Fairness metrics}{6}{subsection.4.5}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Late-promise rate (LPR) vs.\ average promise days (APD) frontier for different quantile-based policies. The recommended operating point at $\tau =0.9$ balances coverage and promise length.}}{6}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:f5-lpr-apd}{{5}{6}{Late-promise rate (LPR) vs.\ average promise days (APD) frontier for different quantile-based policies. The recommended operating point at $\tau =0.9$ balances coverage and promise length}{figure.caption.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{6}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Calibration performance}{6}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Promise-policy comparison}{6}{subsection.5.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Policy metrics for two quantile-based promise policies on the Olist validation set. The cost uses $\lambda _{\text  {late}}=5$ and $\lambda _{\text  {early}}=1$.}}{7}{table.caption.9}\protected@file@percent }
+\newlabel{tab:policies}{{1}{7}{Policy metrics for two quantile-based promise policies on the Olist validation set. The cost uses $\lambda _{\text {late}}=5$ and $\lambda _{\text {early}}=1$}{table.caption.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Segmented expected cost heatmap (distance decile vs.\ dispatch-delay decile) for a segment-wise policy, annotated with the promise quantile $\tau $ used in each segment.}}{7}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:f6a-segment-heatmap}{{6}{7}{Segmented expected cost heatmap (distance decile vs.\ dispatch-delay decile) for a segment-wise policy, annotated with the promise quantile $\tau $ used in each segment}{figure.caption.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Segment-wise policies}{7}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Regional fairness}{7}{subsection.5.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Frequency of selected promise quantiles $\tau $ across segments in the segment-wise policy.}}{7}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:f6b-tau-frequency}{{7}{7}{Frequency of selected promise quantiles $\tau $ across segments in the segment-wise policy}{figure.caption.11}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Regional fairness metrics for the p90 policy. Coverage and expected cost are reported along with differences and ratios to reference regions.}}{7}{table.caption.12}\protected@file@percent }
+\newlabel{tab:regions}{{2}{7}{Regional fairness metrics for the p90 policy. Coverage and expected cost are reported along with differences and ratios to reference regions}{table.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Seller-level fairness}{7}{subsection.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Feature contributions and diagnostics}{7}{subsection.5.6}\protected@file@percent }
+\citation{pleiss2017fairness,pfohl2021fairrisk}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Regional coverage for the $\tau =0.9$ promise policy. Bars show group coverage; the dashed line marks the Central-West reference.}}{8}{figure.caption.13}\protected@file@percent }
+\newlabel{fig:f7-region-coverage}{{8}{8}{Regional coverage for the $\tau =0.9$ promise policy. Bars show group coverage; the dashed line marks the Central-West reference}{figure.caption.13}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Distribution of seller-level coverage for the $\tau =0.9$ policy. The vertical line marks the global 0.9 target.}}{8}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:f8-seller-coverage}{{9}{8}{Distribution of seller-level coverage for the $\tau =0.9$ policy. The vertical line marks the global 0.9 target}{figure.caption.14}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Discussion}{8}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Interpretation}{8}{subsection.6.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Feature contributions (gain-based importance) for the LightGBM quantile model at $\tau =0.90$.}}{8}{figure.caption.15}\protected@file@percent }
+\newlabel{fig:f9-feature-importance}{{10}{8}{Feature contributions (gain-based importance) for the LightGBM quantile model at $\tau =0.90$}{figure.caption.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Slack (promise minus actual delivery time) vs.\ corridor distance for the $\tau =0.9$ policy; late orders are highlighted.}}{8}{figure.caption.16}\protected@file@percent }
+\newlabel{fig:f10-distance-slack}{{11}{8}{Slack (promise minus actual delivery time) vs.\ corridor distance for the $\tau =0.9$ policy; late orders are highlighted}{figure.caption.16}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Fairness implications}{8}{subsection.6.2}\protected@file@percent }
+\bibstyle{plainnat}
+\bibcite{angelopoulos2021gentle}{{1}{2021}{{Angelopoulos and Bates}}{{}}}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Empirical coverage of the $\tau =0.9$ policy over time (weekly buckets), with the nominal 0.9 target shown as a horizontal reference.}}{9}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:f11-temporal-coverage}{{12}{9}{Empirical coverage of the $\tau =0.9$ policy over time (weekly buckets), with the nominal 0.9 target shown as a horizontal reference}{figure.caption.17}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Ablation tornado plot: change in mean pinball loss when removing feature families relative to the full model.}}{9}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:f12-ablation}{{13}{9}{Ablation tornado plot: change in mean pinball loss when removing feature families relative to the full model}{figure.caption.18}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Limitations}{9}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion and Future Work}{9}{section.7}\protected@file@percent }
+\bibcite{barocas2019fairness}{{2}{2019}{{Barocas et~al.}}{{}}}
+\bibcite{biau2024pinball}{{3}{2024}{{Biau and B{\"o}hning}}{{}}}
+\bibcite{brunilogistics2023}{{4}{2023}{{Bruni et~al.}}{{}}}
+\bibcite{dudik2011doubly}{{5}{2011}{{Dud{\'\i }k et~al.}}{{}}}
+\bibcite{guo2017calibration}{{6}{2017}{{Guo et~al.}}{{}}}
+\bibcite{gupta2022fairfoody}{{7}{2022}{{Gupta et~al.}}{{}}}
+\bibcite{jiang2016doubly}{{8}{2016}{{Jiang and Li}}{{}}}
+\bibcite{kardinal2025lastmile}{{9}{2025}{{Kardinal}}{{}}}
+\bibcite{kleinberg2017impossibility}{{10}{2017}{{Kleinberg et~al.}}{{}}}
+\bibcite{koenker2001}{{11}{2001}{{Koenker}}{{}}}
+\bibcite{koenker1978}{{12}{1978}{{Koenker and Bassett}}{{}}}
+\bibcite{levi2022uncertainty}{{13}{2022}{{Levi et~al.}}{{}}}
+\bibcite{lightgbm2017}{{14}{2017}{{Ke et~al.}}{{}}}
+\bibcite{martinez2024fairrouting}{{15}{2024}{{Mart{\'\i }nez-Sykora et~al.}}{{}}}
+\bibcite{olistdataset}{{16}{2018}{{Olist}}{{}}}
+\bibcite{pfohl2021fairrisk}{{17}{2021}{{Pfohl et~al.}}{{}}}
+\bibcite{pleiss2017fairness}{{18}{2017}{{Pleiss et~al.}}{{}}}
+\bibcite{rokoss2024deliverytime}{{19}{2024}{{Rokoss et~al.}}{{}}}
+\bibcite{romano2019conformalized}{{20}{2019}{{Romano et~al.}}{{}}}
+\bibcite{sousa2024adaptive}{{21}{2024}{{Sousa et~al.}}{{}}}
+\bibcite{tagasovska2019epinball}{{22}{2019}{{Tagasovska and Lopez-Paz}}{{}}}
+\bibcite{vovk2005algorithmic}{{23}{2005}{{Vovk et~al.}}{{}}}
+\bibcite{walmart2019cdt}{{24}{2019}{{Walmart Global Tech}}{{}}}
+\bibcite{zhang2023calibration}{{25}{2023}{{Zhang et~al.}}{{}}}
+\gdef \@abspage@last{10}
