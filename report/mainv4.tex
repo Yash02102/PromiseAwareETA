@@ -1,0 +1,547 @@
+\documentclass[12pt,twocolumn]{article}
+
+% ---------- Basic packages ----------
+\usepackage[margin=1in]{geometry}
+\usepackage{times}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{siunitx}
+\usepackage{url}
+\usepackage[colorlinks=true,allcolors=blue]{hyperref}
+\usepackage[round,authoryear]{natbib}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage{caption}
+\usepackage{tabularx}
+
+% Figures folder (compile from repo root: pdflatex report/main.tex)
+\graphicspath{{C:/UT Austin MS CS/CML/PromiseAwareETA/figures/}}
+
+% 1.5 line spacing to match course requirements
+\onehalfspacing
+
+% Avoid stretched pages that can cause ugly spacing
+\raggedbottom
+
+% ---------- Metadata ----------
+\title{Promise-Aware ETA: Calibrated Delivery-Time Uncertainty and Offline Delivery-Promise Optimization on the Olist E-Commerce Dataset}
+
+\author{
+  Your Name\thanks{Affiliation, address, email.}
+}
+
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Promised delivery dates on e-commerce platforms appear very simple to the end user---for example, ``delivered by Friday''---but they have a strong influence on whether the customer places an order, how satisfied the customer feels later, and how much the customer trusts the platform in the long run. In many real-world systems, these promises are still derived from point predictions combined with manually tuned safety buffers. In my experiments on the Olist dataset, I observed that such point ETAs with ad-hoc padding are not sufficient: actual delivery times are heavy-tailed, vary substantially across sellers and regions, and simple buffers either leave too many orders arriving late or push the promises so far out that the platform appears slow.
+
+In this report I present \emph{Promise-Aware ETA}, an end-to-end pipeline that (i) estimates order-level delivery-time uncertainty using quantile regression, (ii) calibrates those quantiles using split conformal prediction, and (iii) uses the calibrated uncertainty estimates to compare offline delivery-promise policies under an asymmetric cost function along with basic fairness diagnostics. The pipeline is applied to the Brazilian E-Commerce Public Dataset by Olist, a multi-table dataset with approximately 100\,000 orders.
+
+Using LightGBM-based quantile regression models calibrated with conformalized quantile regression, the final model yields 90\,\% nominal prediction intervals with empirical coverage of 0.8997 and a mean width of 22.0 days on a 2018 hold-out set. When the calibrated 0.9 quantile is directly used as the promised delivery date, coverage improves from 51.1\,\% to 84.2\,\% relative to a median-based promise, while the expected asymmetric cost reduces from 22.35 to 15.44 penalty-weighted days per order under a 5:1 late-versus-early penalty ratio. A simple regional analysis shows coverage ranging from 0.60 in the sparsely sampled North region to 0.87 in the Central-West region, indicating that data sparsity and structural differences across regions remain important. Seller-level coverage averages 0.86 but exhibits a long tail of under-served sellers.
+
+The main outcome of this work is not only a single model but a modular and leakage-aware pipeline for feature engineering, uncertainty calibration, and promise-policy evaluation, together with saved configurations and experiment artefacts that support reproducibility. The report concludes with a discussion of what these findings would imply for an e-commerce organisation and how similar ideas could be extended to richer policy classes, fairness-aware objectives, and online deployment.
+\end{abstract}
+
+\section{Introduction}
+Customers on e-commerce platforms have now come to expect a promised delivery date before they confirm their purchase. This promise is more than a convenience: it shapes the customer’s expectation, influences the decision to complete the order, and plays a major role in post-purchase satisfaction. When an order arrives after the promised date, trust in the platform reduces sharply and support as well as compensation costs tend to increase. On the other hand, if the promise is unnecessarily conservative, the platform may appear slow compared to competitors and some customers will drop out during checkout.
+
+In many production systems, promised dates are still derived from a relatively simple strategy: estimate a single expected delivery time for an order and then add a fixed or slowly tuned buffer, such as ``+2 days'' or ``maximum of model prediction and carrier service-level agreement''. This is easy to deploy and adjust, but in a marketplace such as Olist it runs into two main difficulties. First, delivery delays are heavy-tailed and depend strongly on geography, seller practices, and the state of the logistics network. Second, the question ``how much buffer is enough'' is not precise unless one formally specifies the cost of being late versus the cost of being early.
+
+Recent work in forecasting and uncertainty quantification suggests that it is more appropriate to model the \emph{distribution} of delivery times rather than just a single point estimate \citep{koenker1978,koenker2001,lightgbm2017,zhang2023calibration}. Quantile regression and conformal prediction give two practical tools in this direction. Quantile models estimate conditional quantiles $Q_\tau(Y \mid X)$ of the delivery lag $Y$ given features $X$, and conformal prediction offers a way to adjust these quantiles so that the resulting prediction intervals achieve specified marginal coverage on new data \citep{romano2019conformalized,angelopoulos2021gentle}.
+
+In this report I take a more operational viewpoint. Instead of only asking how accurate the ETAs are, I ask the following: given calibrated predictive uncertainty, how should a platform select a promised date so as to trade off the pain of being late against the opportunity cost of being conservative, and how stable is this trade-off across different regions and sellers? To study this, I focus on the Brazilian Olist marketplace dataset \citep{olistdataset} and build a pipeline that I refer to as \emph{Promise-Aware ETA}.
+
+\paragraph{Research questions.}
+The work is organised around three questions:
+\begin{enumerate}
+  \item \textbf{Calibration.} After applying split conformal prediction, can quantile models for order-level delivery lag achieve coverage close to the nominal level while keeping prediction intervals reasonably tight?
+  \item \textbf{Policy optimality.} Within a simple family of policies that promise at a calibrated quantile (for example, the median or the 0.9 quantile), which quantile choices minimise an asymmetric cost that penalises late deliveries more heavily than early ones?
+  \item \textbf{Fairness and robustness.} When performance is broken down by seller and region, do these quantile-based policies behave in a broadly consistent manner, or are there systematic disparities that would be problematic in a real marketplace?
+\end{enumerate}
+
+\paragraph{Contributions.}
+The key contributions of this report are as follows:
+\begin{itemize}
+  \item A leakage-safe feature engineering and modelling pipeline for the Olist dataset, with particular emphasis on seller history and geographical information, in addition to standard order-level features.
+  \item A conformalized quantile regression (CQR) setup that wraps base quantile models and produces calibrated prediction intervals with targeted coverage.
+  \item An offline promise-policy evaluator with an asymmetric cost function and group-wise diagnostics for regions and sellers.
+  \item Empirical evidence, on Olist, that a calibrated 0.9-quantile promise policy can both reduce expected cost and substantially increase coverage relative to a median-based promise.
+  \item A set of saved configurations, experiment summaries, and plots that make it easier to reproduce the results or to adapt the pipeline to other contexts.
+\end{itemize}
+
+\section{Related Work}
+\subsection{Delivery-time prediction and e-commerce logistics}
+The Brazilian E-Commerce Public Dataset by Olist has been widely used as a sandbox for analysing marketplace behaviour, logistics, and customer satisfaction \citep{olistdataset}. Several studies have taken this dataset or similar data and applied regression or machine learning models to predict delivery times based on order, seller, and product-level predictors \citep{brunilogistics2023,rokoss2024deliverytime}. Industry case studies from large retailers also describe internal ETA systems and show that improved delivery-time prediction can translate into higher conversion, better customer experience, and fewer support tickets \citep{walmart2019cdt,kardinal2025lastmile}.
+
+Beyond pure prediction, there is a significant body of work in operations research on last-mile logistics. In that area, machine learning has been combined with vehicle routing or scheduling algorithms to improve upon classical heuristics while respecting delivery-time constraints \citep{brunilogistics2023}. Many of these systems still assume some type of point ETA, sometimes with added safety margins.
+
+\subsection{Quantile regression and pinball loss}
+Quantile regression extends the usual squared-error regression by directly targeting conditional quantiles rather than the conditional mean \citep{koenker1978,koenker2001}. Instead of minimising squared error, quantile regression minimises the \emph{pinball} or \emph{check} loss, an asymmetric linear loss whose asymmetry parameter corresponds to the desired quantile. Over time, this idea has been extended to non-linear models such as quantile random forests, gradient-boosted quantile models, and deep networks trained with variants of the pinball loss \citep{biau2024pinball,tagasovska2019epinball}.
+
+For structured tabular data of the kind seen in Olist, gradient boosting decision trees, and in particular LightGBM, are a practical choice for quantile regression \citep{lightgbm2017}. They handle mixed feature types with limited preprocessing and scale well to medium-sized datasets.
+
+\subsection{Conformal prediction and calibration}
+Conformal prediction provides a general framework for converting point or interval predictors into prediction sets with finite-sample coverage guarantees under exchangeability \citep{vovk2005algorithmic,angelopoulos2021gentle}. Conformalized quantile regression (CQR) adapts this framework to the setting where base lower and upper quantiles are already available and adjusts them using calibration residuals \citep{romano2019conformalized}. Recent work has studied different choices of non-conformity scores and strategies for handling distribution shift or small calibration sets \citep{sousa2024adaptive,zhang2023calibration}.
+
+In parallel, the calibration literature provides several metrics and visual tools, such as reliability diagrams and coverage-based calibration errors, which help practitioners understand how well probabilistic or interval forecasts align with observed data \citep{guo2017calibration,levi2022uncertainty}. In this report, I focus primarily on straightforward coverage statistics, violation rates, and mean interval width.
+
+\subsection{Fairness and offline policy evaluation}
+The literature on algorithmic fairness contains multiple definitions of fairness and documents tensions between different fairness criteria and calibration \citep{barocas2019fairness,pleiss2017fairness,kleinberg2017impossibility}. In logistics and on-demand platforms, fairness has also been studied in the context of routing and work allocation for delivery workers \citep{gupta2022fairfoody,martinez2024fairrouting}. There is comparatively less work on fairness in customer-facing delivery promises, although the underlying concern about differential quality of service is similar.
+
+On the evaluation side, off-policy evaluation in contextual bandits and reinforcement learning offers a range of methods for estimating how a new policy would perform using logged data collected under a different policy. These include importance-weighted estimators and doubly robust estimators \citep{dudik2011doubly,jiang2016doubly}. The offline promise simulator in this report is intentionally simpler: it assumes that the realised delivery lag is independent of the promise shown to the customer, which is a reasonable first approximation for the Olist dataset.
+
+\section{Materials and Data Sources}
+\subsection{Dataset}
+All experiments in this report use the Brazilian E-Commerce Public Dataset by Olist, available on Kaggle, which contains around 100\,000 orders and several related tables \citep{olistdataset}. The most relevant tables are:
+\begin{itemize}
+  \item \textbf{Orders:} order status and multiple timestamps, including purchase, approval, shipment, and delivery dates.
+  \item \textbf{Order items:} product category, seller ID, freight value, and shipping-limit dates, with one row per item.
+  \item \textbf{Customers and sellers:} location information for both parties, which I aggregate into Brazilian macro-regions.
+\end{itemize}
+
+\subsection{Target definition}
+The primary quantity of interest is the approval-to-delivery lag in days:
+\begin{equation}
+  Y = \max\bigl\{0,\; t_{\text{delivered}} - t_{\text{approved}}\bigr\},
+\end{equation}
+where $t_{\text{delivered}}$ and $t_{\text{approved}}$ are the delivery and approval timestamps, respectively, converted into a common timezone. Orders with missing or inconsistent timestamps (for instance, deliveries appearing earlier than approval) are dropped.
+
+This definition isolates the segment of the customer journey after payment approval, which is closer to what can be promised at checkout and less entangled with upstream processes such as payment verification or fraud checks.
+
+\subsection{Feature engineering}
+Feature engineering plays an important role in the final performance. I organise the features into several broad families:
+
+\begin{itemize}
+  \item \textbf{Order-level features:} freight value, number of items, encoded product category, payment method, instalment count, and a ``shipping-limit slack'' feature that captures the number of days between approval and the carrier shipping deadline.
+  \item \textbf{Geographical features:} approximate customer--seller distance based on latitude/longitude using the Haversine formula, the seller’s macro-region, and an indicator for whether the shipment stays within the same region.
+  \item \textbf{Temporal features:} purchase month, day-of-week, and proximity to major holidays, which serve as proxies for operational load.
+  \item \textbf{Seller dispatch history:} rolling 30/60/90-day statistics per seller, such as median dispatch lag, 90th percentile dispatch lag, fraction of orders shipped before the deadline, and recent changes in the median. These are computed in a leakage-safe manner by restricting aggregates to orders whose approval timestamps are strictly earlier than that of the target order.
+\end{itemize}
+
+These seller-history features, in particular, are intended to capture persistent differences in reliability and responsiveness across sellers without leaking information from future orders.
+
+\subsection{Train--validation split}
+To resemble a realistic deployment setting, I use a temporal rather than random split:
+\begin{itemize}
+  \item Training data: orders approved between 2017-01-01 and 2017-12-31.
+  \item Validation data: orders approved between 2018-01-01 and 2018-06-30.
+\end{itemize}
+
+In this setup, the models are trained only on past orders and then evaluated on later orders, mirroring how the system would operate if deployed.
+
+\section{Methods}
+\subsection{Problem formulation}
+For each order $i$, let $X_i \in \mathbb{R}^d$ denote the feature vector and $Y_i \in \mathbb{R}_{\ge 0}$ denote the realised approval-to-delivery lag. Instead of estimating the conditional mean $\mathbb{E}[Y \mid X]$, the objective is to estimate conditional quantiles $Q_\tau(X)$ for several quantile levels of interest, here $\tau \in \{0.1, 0.5, 0.9\}$.
+
+The base quantile models are trained by minimising the pinball loss:
+\begin{equation}
+  \ell_\tau(y,\hat{q}) = 
+  \begin{cases}
+    \tau \,(y - \hat{q}), & y \ge \hat{q},\\[2pt]
+    (\tau - 1)\,(y - \hat{q}), & y < \hat{q}.
+  \end{cases}
+\end{equation}
+This asymmetric loss penalises underprediction and overprediction differently, which is exactly what is needed to focus on a specific quantile.
+
+\subsection{Base quantile models}
+I consider three families of quantile models:
+
+\begin{enumerate}
+  \item \textbf{Linear quantile regression}, with a smoothed pinball loss and $\ell_2$ regularisation, primarily as a simple baseline.
+  \item \textbf{Histogram-based gradient boosting (HGB)}, using a gradient boosting regressor configured for quantile loss, to obtain non-linear decision boundaries.
+  \item \textbf{LightGBM quantile regression}, based on histogram-based gradient boosted trees tuned for tabular data \citep{lightgbm2017}. This is the main model used for the final results.
+\end{enumerate}
+
+Before applying these to the Olist data, I validate the training code on a synthetic benchmark where the ground-truth quantiles are known. Figure~\ref{fig:f1-pinball} shows the pinball loss across quantiles for this benchmark.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F1_pinball_by_tau.png}
+  \caption{Pinball loss by quantile $\tau$ for baseline models on a synthetic benchmark dataset. Lower values indicate better fit.}
+  \label{fig:f1-pinball}
+\end{figure}
+
+\subsection{Split-conformal calibration}
+Well-trained quantile models can still be miscalibrated: a nominal 90\,\% interval between the 0.05 and 0.95 quantiles may not actually cover 90\,\% of future observations. To correct for this, I apply split conformal calibration in the style of CQR \citep{romano2019conformalized}.
+
+Let $\hat{Q}_{\alpha}^{\text{base}}(x)$ and $\hat{Q}_{1-\alpha}^{\text{base}}(x)$ denote the lower and upper base quantiles for a target coverage level $1-\alpha$. The training data are divided into a proper training set, used to fit the base models, and a calibration set. On the calibration set, non-conformity scores are defined as
+\begin{equation}
+  s_i = \max\left\{\hat{Q}_{\alpha}^{\text{base}}(X_i) - Y_i,\; Y_i - \hat{Q}_{1-\alpha}^{\text{base}}(X_i),\; 0\right\}.
+\end{equation}
+The calibration offset $\hat{\Delta}$ is then chosen as the empirical $(1-\alpha)$ quantile of $\{s_i\}$. The calibrated prediction intervals are given by
+\begin{equation}
+  [\hat{L}(x),\hat{U}(x)] = 
+  \big[\hat{Q}_{\alpha}^{\text{base}}(x) - \hat{\Delta},\; \hat{Q}_{1-\alpha}^{\text{base}}(x) + \hat{\Delta}\big].
+\end{equation}
+
+Figure~\ref{fig:f2-reliability} compares nominal and empirical coverage, and Figure~\ref{fig:f3-width-coverage} shows the evolution of mean interval width with coverage.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F2_reliability.png}
+  \caption{Reliability diagram: empirical coverage versus nominal target coverage for the calibrated model on the Olist validation set. The dashed line indicates perfect calibration.}
+  \label{fig:f2-reliability}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F3_width_vs_coverage.png}
+  \caption{Mean prediction interval width (in days) as a function of target coverage for the conformalized quantile model.}
+  \label{fig:f3-width-coverage}
+\end{figure}
+
+\subsection{Promise policies and asymmetric cost}
+Once calibrated quantiles and intervals are available, I define and compare different \emph{promise policies}. A promise policy is a function that maps features $X$ to a promised lag $P(X)$ in days. In this report I focus on simple policies that promise at a calibrated quantile:
+\begin{equation}
+  P_\tau(X) = \hat{Q}_{\tau}^{\text{cal}}(X),
+\end{equation}
+where $\hat{Q}_{\tau}^{\text{cal}}$ denotes a calibrated quantile function.
+
+Two specific policies are studied:
+\begin{itemize}
+  \item \textbf{p50:} promise at the calibrated median ($\tau = 0.5$).
+  \item \textbf{p90:} promise at the calibrated upper quantile ($\tau = 0.9$).
+\end{itemize}
+
+To compare policies, I use an asymmetric cost function that reflects the intuitive idea that being late is more expensive than being early. If $p_i$ is the promised lag and $y_i$ is the realised lag, the cost for order $i$ is
+\begin{equation}
+  C(y_i, p_i) =
+  \begin{cases}
+    \lambda_{\text{late}} (y_i - p_i), & y_i > p_i,\\[2pt]
+    \lambda_{\text{early}} (p_i - y_i), & y_i < p_i,\\[2pt]
+    0, & y_i = p_i,
+  \end{cases}
+\end{equation}
+with default penalties $\lambda_{\text{late}} = 5$ and $\lambda_{\text{early}} = 1$.
+
+Figure~\ref{fig:f4-cost-tau} shows the expected asymmetric cost as a function of the promise quantile $\tau$, and Figure~\ref{fig:f5-lpr-apd} illustrates the trade-off between late-promise rate (LPR) and average promise days (APD).
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F4_cost_vs_tau.png}
+  \caption{Expected asymmetric cost as a function of promise quantile $\tau$ for quantile-based policies.}
+  \label{fig:f4-cost-tau}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F5_lpr_apd_frontier.png}
+  \caption{Late-promise rate (LPR) versus average promise days (APD) frontier for different quantile-based policies. The recommended operating point at $\tau=0.9$ balances coverage and promise length.}
+  \label{fig:f5-lpr-apd}
+\end{figure}
+
+\subsection{Fairness metrics}
+To understand how stable performance is across the marketplace, I compute group-wise metrics for two sets of groups:
+
+\begin{itemize}
+  \item \textbf{Regions:} the seller’s macro-region (North, Northeast, Central-West, Southeast, South).
+  \item \textbf{Sellers:} individual seller IDs with a sufficient number of orders in the validation period.
+\end{itemize}
+
+For each group $g$ and policy $P$, I track group coverage, expected cost, and the deviation of each group’s metrics from a chosen reference group.
+
+\section{Results}
+\subsection{Calibration performance}
+On the 2018 validation period, the LightGBM + CQR model achieves:
+\begin{itemize}
+  \item Target coverage: 90\,\%.
+  \item Observed coverage: 0.8997.
+  \item Mean interval width: 22.03 days.
+\end{itemize}
+
+The reliability diagram in Figure~\ref{fig:f2-reliability} shows that empirical coverage follows the nominal targets quite closely over multiple levels, and Figure~\ref{fig:f3-width-coverage} shows the expected widening of intervals as target coverage increases.
+
+\subsection{Promise-policy comparison}
+Table~\ref{tab:policies} compares the p50 and p90 policies on the validation set.
+
+\begin{table}[t]
+  \centering
+  \caption{Policy metrics for two quantile-based promise policies on the Olist validation set. The cost uses $\lambda_{\text{late}}=5$ and $\lambda_{\text{early}}=1$.}
+  \label{tab:policies}
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.1}
+  \resizebox{\linewidth}{!}{%
+    \begin{tabular}{lccccccc}
+      \toprule
+      Policy & Quantile & Coverage & Avg.\ P. & Avg.\ A. & Avg.\ Late & Avg.\ Early & Exp.\ Cost \\
+      \midrule
+      p50 & 0.5 & 0.511 & 11.02 & 13.33 & 4.11 & 1.80 & 22.35 \\
+      p90 & 0.9 & 0.842 & 19.98 & 13.33 & 1.47 & 8.12 & 15.44 \\
+      \bottomrule
+    \end{tabular}%
+  }
+\end{table}
+
+The median-based policy (p50) keeps promises relatively short but is late in roughly half of the orders. The p90 policy, by design, promises later dates; it reduces late-promise rate and expected cost under the chosen penalty parameters, even though customers see longer promised delivery times on average. The frontier in Figure~\ref{fig:f5-lpr-apd} makes this trade-off explicit.
+
+\subsection{Segment-wise policies}
+To see whether there is value in tailoring promises by segment, I also consider a simple segment-wise policy where the quantile $\tau$ depends on distance deciles and historical dispatch delay deciles. Figure~\ref{fig:f6a-segment-heatmap} shows the expected cost for each segment and annotates the chosen $\tau$, while Figure~\ref{fig:f6b-tau-frequency} summarises how often each quantile is used across segments.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F6a_expected_cost_heatmap_annotated_tau.png}
+  \caption{Segmented expected cost heatmap (distance decile versus dispatch-delay decile) for a segment-wise policy, annotated with the promise quantile $\tau$ used in each segment.}
+  \label{fig:f6a-segment-heatmap}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.6\linewidth]{F6b_tau_frequency.png}
+  \caption{Frequency of selected promise quantiles $\tau$ across segments in the segment-wise policy.}
+  \label{fig:f6b-tau-frequency}
+\end{figure}
+
+This segment-wise policy tends to assign higher quantiles to longer-distance and historically slower segments and lower quantiles to more reliable segments, and it achieves modest improvements in expected cost compared to a single global quantile.
+
+\subsection{Regional fairness}
+Table~\ref{tab:regions} and Figure~\ref{fig:f7-region-coverage} summarise regional coverage and cost for the p90 policy.
+
+\begin{table}[t]
+  \centering
+  \caption{Regional fairness metrics for the p90 policy. Coverage and expected cost are reported along with differences and ratios versus reference regions.}
+  \label{tab:regions}
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.1}
+  \resizebox{\linewidth}{!}{%
+    \begin{tabular}{lrrrr}
+      \toprule
+      Region & Coverage & $\Delta$Cov vs.\ CW & Exp.\ Cost & Cost Ratio vs.\ NE \\
+      \midrule
+      Central-West & 0.873 & 0.000 & 14.69 & 0.88 \\
+      South        & 0.850 & -0.023 & 15.37 & 0.92 \\
+      Northeast    & 0.848 & -0.025 & 16.73 & 1.00 \\
+      Southeast    & 0.841 & -0.032 & 15.44 & 0.96 \\
+      North        & 0.600 & -0.273 & 11.62 & 0.69 \\
+      \bottomrule
+    \end{tabular}%
+  }
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F7_region_coverage.png}
+  \caption{Regional coverage for the $\tau=0.9$ promise policy. Bars show group coverage; the dashed line marks the Central-West reference.}
+  \label{fig:f7-region-coverage}
+\end{figure}
+
+Four regions (Central-West, South, Northeast, Southeast) lie in a relatively tight coverage band between about 0.84 and 0.87, and their expected costs are within roughly $\pm 12\,\%$ of the Northeast reference. The North region stands out with coverage of only 0.60, despite a lower expected cost. This is partly due to the small number of orders from the North region and may also reflect genuinely different logistics constraints.
+
+\subsection{Seller-level fairness}
+At the seller level, I examine coverage and cost for sellers with sufficient validation data. The main observations are:
+\begin{itemize}
+  \item Mean seller coverage is 0.86 and the median is 0.93.
+  \item The interquartile range is approximately 0.80 to 1.00.
+  \item A small number of sellers form a long tail of low-coverage outliers, usually associated with limited sample sizes.
+\end{itemize}
+
+Figure~\ref{fig:f8-seller-coverage} shows the distribution of seller-level coverage.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F8_seller_coverage_hist.png}
+  \caption{Distribution of seller-level coverage for the $\tau=0.9$ policy. The vertical line marks the global 0.9 target.}
+  \label{fig:f8-seller-coverage}
+\end{figure}
+
+\subsection{Feature contributions and diagnostics}
+Figure~\ref{fig:f9-feature-importance} shows gain-based feature importance for the LightGBM quantile model at $\tau=0.9$. Seller dispatch history and geographical features (especially distance) appear among the most important predictors, which aligns with the intuition that seller behaviour and corridor length strongly influence delivery times.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F9_feature_importance_tau90.png}
+  \caption{Feature contributions (gain-based importance) for the LightGBM quantile model at $\tau=0.90$.}
+  \label{fig:f9-feature-importance}
+\end{figure}
+
+Figure~\ref{fig:f10-distance-slack} plots promise slack (promise minus actual) versus distance and highlights late deliveries. Late promises tend to cluster in longer-distance corridors and around certain sellers, indicating that corridors and seller reliability could be incorporated more explicitly in future policy designs.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F10_violation_vs_distance.png}
+  \caption{Slack (promise minus actual delivery time) versus corridor distance for the $\tau=0.9$ policy; late orders are highlighted.}
+  \label{fig:f10-distance-slack}
+\end{figure}
+
+Figure~\ref{fig:f11-temporal-coverage} shows coverage over time, and Figure~\ref{fig:f12-ablation} reports an ablation where entire feature families are removed one at a time to see their impact on performance.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F11_coverage_over_time.png}
+  \caption{Empirical coverage of the $\tau=0.9$ policy over time (weekly buckets), with the nominal 0.9 target shown as a horizontal reference.}
+  \label{fig:f11-temporal-coverage}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{F12_ablation_tornado.png}
+  \caption{Ablation tornado plot: change in mean pinball loss when removing feature families relative to the full model.}
+  \label{fig:f12-ablation}
+\end{figure}
+
+\section{Discussion}
+\subsection{Interpretation}
+The main takeaway from these experiments is that uncertainty-aware, quantile-based promise policies can outperform simple median-based promises, at least under the asymmetric cost model considered here. Promising at the calibrated 0.9 quantile significantly reduces the frequency and severity of late deliveries and, under a 5:1 late-versus-early penalty, also reduces expected cost, even though customers are told to expect longer delivery times.
+
+At the same time, the calibrated intervals are quite wide on the Olist dataset, with an average width of around three weeks at 90\,\% coverage. This reflects genuine variability in the data: delivery times are noisy, some corridors are long, and the dataset does not contain the richer real-time signals that a production ETA system could rely on (such as carrier scan events or warehouse load indicators). In a real deployment, additional features should help narrow these intervals.
+
+\subsection{Fairness implications}
+From a fairness perspective, the results are somewhere in the middle. On one side, using a single global quantile and a single calibration step yields reasonably similar coverage levels for most regions and many sellers. On the other side, the North region and a handful of low-volume sellers clearly fall outside this band.
+
+In an operational setting, a platform that is concerned about equitable treatment may want to embed additional constraints or regularisation into the policy design. For example, one could insist that coverage does not fall below a prescribed level for any group with sufficient sample size, or design hierarchical models that explicitly borrow strength across regions and sellers \citep{pleiss2017fairness,pfohl2021fairrisk}. Both directions appear natural extensions of the current work.
+
+\subsection{Limitations}
+Some important limitations should be noted:
+\begin{itemize}
+  \item The Olist dataset is static and relatively coarse. Key real-world signals such as live tracking, fleet capacity, or weather conditions are not available, although such information would likely tighten prediction intervals in practice.
+  \item The policy class used here is very simple: promise at a calibrated quantile, optionally with basic segmentation. Real platforms may deploy richer policies that consider customer-level preferences, order value, and service-level guarantees in more detail.
+  \item Conformal prediction guarantees marginal, but not group-wise, coverage. The fairness analysis partially compensates for this by inspecting group behaviour, but the guarantees themselves are not group-conditional.
+  \item The offline evaluation assumes that the delivery lag is independent of the promised date. If customers or operations teams respond differently to different promises, the real impact of a new policy would need to be studied via online experiments.
+\end{itemize}
+
+\section{Conclusion and Future Work}
+This report has presented Promise-Aware ETA, a pipeline for calibrated delivery-time uncertainty estimation and offline evaluation of delivery-promise policies on the Olist dataset. By combining LightGBM-based quantile regression with split conformal calibration, the pipeline produces intervals with near-nominal coverage. When these intervals are used to define quantile-based promise policies, it becomes possible to reason explicitly about the trade-off between promise length and late-delivery risk.
+
+On the Olist data, promising at the calibrated 0.9 quantile yields substantially higher coverage and lower expected asymmetric cost than a median-based policy. At the same time, the analysis shows clear variation across regions and sellers, which highlights the importance of fairness-aware policy design and possibly more expressive models.
+
+There are several natural directions for future work. One direction is to enlarge the policy class and search over policies that satisfy explicit fairness constraints or service-level targets. Another direction is to incorporate additional features and real-time signals that are closer to what a deployed ETA system would observe. A third direction is to move beyond offline evaluation and explore online A/B testing or bandit-style learning, where customer behaviour and operational feedback can shape successive iterations of the model and the promise policy.
+
+\section*{Acknowledgments}
+[Optional: acknowledge advisors, mentors, or supporting organisations.]
+
+\bibliographystyle{plainnat}
+\begin{thebibliography}{99}
+
+\bibitem[Angelopoulos and Bates(2021)]{angelopoulos2021gentle}
+A.~N. Angelopoulos and S.~Bates.
+\newblock A gentle introduction to conformal prediction and distribution-free uncertainty quantification.
+\newblock \emph{arXiv preprint arXiv:2107.07511}, 2021.
+
+\bibitem[Barocas et~al.(2019)]{barocas2019fairness}
+S.~Barocas, M.~Hardt, and A.~Narayanan.
+\newblock \emph{Fairness and Machine Learning}.
+\newblock MIT Press, 2019.
+
+\bibitem[Biau and B{\"o}hning(2024)]{biau2024pinball}
+G.~Biau and D.~B{\"o}hning.
+\newblock Pinball boosting of regression quantiles.
+\newblock \emph{Computational Statistics \& Data Analysis}, 2024.
+
+\bibitem[Bruni et~al.(2023)]{brunilogistics2023}
+M.~E. Bruni et~al.
+\newblock A machine learning optimization approach for last-mile delivery with time windows.
+\newblock \emph{Computers \& Operations Research}, 2023.
+
+\bibitem[Dud{\'\i}k et~al.(2011)]{dudik2011doubly}
+M.~Dud{\'\i}k, J.~Langford, and L.~Li.
+\newblock Doubly robust policy evaluation and learning.
+\newblock In \emph{Proceedings of ICML}, 2011.
+
+\bibitem[Guo et~al.(2017)]{guo2017calibration}
+C.~Guo, G.~Pleiss, Y.~Sun, and K.~Q. Weinberger.
+\newblock On calibration of modern neural networks.
+\newblock In \emph{Proceedings of ICML}, 2017.
+
+\bibitem[Gupta et~al.(2022)]{gupta2022fairfoody}
+A.~Gupta et~al.
+\newblock FairFoody: Bringing in fairness in food delivery.
+\newblock In \emph{Proceedings of The Web Conference}, 2022.
+
+\bibitem[Jiang and Li(2016)]{jiang2016doubly}
+N.~Jiang and L.~Li.
+\newblock Doubly robust off-policy value evaluation for reinforcement learning.
+\newblock In \emph{Proceedings of ICML}, 2016.
+
+\bibitem[Kardinal(2025)]{kardinal2025lastmile}
+Kardinal.
+\newblock Machine learning: 8 innovations for last-mile delivery.
+\newblock Technical report, 2025.
+
+\bibitem[Kleinberg et~al.(2017)]{kleinberg2017impossibility}
+J.~Kleinberg, S.~Mullainathan, and M.~Raghavan.
+\newblock Inherent trade-offs in the fair determination of risk scores.
+\newblock In \emph{Proceedings of ITCS}, 2017.
+
+\bibitem[Koenker(2001)]{koenker2001}
+R.~Koenker.
+\newblock Quantile regression.
+\newblock \emph{Journal of Economic Perspectives}, 15(4):143--156, 2001.
+
+\bibitem[Koenker and Bassett(1978)]{koenker1978}
+R.~Koenker and G.~Bassett.
+\newblock Regression quantiles.
+\newblock \emph{Econometrica}, 46(1):33--50, 1978.
+
+\bibitem[Levi et~al.(2022)]{levi2022uncertainty}
+D.~Levi et~al.
+\newblock Evaluating and calibrating uncertainty prediction in deep neural networks.
+\newblock \emph{International Journal of Computer Vision}, 130, 2022.
+
+\bibitem[Ke et~al.(2017)]{lightgbm2017}
+G.~Ke et~al.
+\newblock LightGBM: A highly efficient gradient boosting decision tree.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2017.
+
+\bibitem[Mart{\'\i}nez-Sykora et~al.(2024)]{martinez2024fairrouting}
+A.~Mart{\'\i}nez-Sykora et~al.
+\newblock Exploring fairness in routing and scheduling for food delivery platforms.
+\newblock \emph{Expert Systems with Applications}, 2024.
+
+\bibitem[Olist(2018)]{olistdataset}
+Olist.
+\newblock Brazilian E-Commerce Public Dataset by Olist.
+\newblock Kaggle data set, 2018.
+
+\bibitem[Pfohl et~al.(2021)]{pfohl2021fairrisk}
+S.~R. Pfohl et~al.
+\newblock An empirical characterization of fair machine learning for clinical risk prediction.
+\newblock \emph{Journal of Biomedical Informatics}, 113, 2021.
+
+\bibitem[Pleiss et~al.(2017)]{pleiss2017fairness}
+G.~Pleiss et~al.
+\newblock On fairness and calibration.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2017.
+
+\bibitem[Rokoss et~al.(2024)]{rokoss2024deliverytime}
+A.~Rokoss et~al.
+\newblock Case study on delivery time determination using a machine learning approach.
+\newblock \emph{Journal of Intelligent Manufacturing}, 2024.
+
+\bibitem[Romano et~al.(2019)]{romano2019conformalized}
+Y.~Romano, E.~Patterson, and E.~J. Cand{\`e}s.
+\newblock Conformalized quantile regression.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2019.
+
+\bibitem[Sousa et~al.(2024)]{sousa2024adaptive}
+M.~Sousa et~al.
+\newblock Improving conformalized quantile regression through adaptive calibration.
+\newblock \emph{Expert Systems with Applications}, 2024.
+
+\bibitem[Tagasovska and Lopez-Paz(2019)]{tagasovska2019epinball}
+N.~Tagasovska and D.~Lopez-Paz.
+\newblock Single-model uncertainties for deep learning.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2019.
+
+\bibitem[Vovk et~al.(2005)]{vovk2005algorithmic}
+V.~Vovk, A.~Gammerman, and G.~Shafer.
+\newblock \emph{Algorithmic Learning in a Random World}.
+\newblock Springer, 2005.
+
+\bibitem[Walmart Global Tech(2019)]{walmart2019cdt}
+Walmart Global Tech.
+\newblock Customer delivery time prediction using machine learning.
+\newblock Technical report, 2019.
+
+\bibitem[Zhang et~al.(2023)]{zhang2023calibration}
+X.~Zhang et~al.
+\newblock Calibration in machine learning uncertainty quantification.
+\newblock \emph{arXiv preprint arXiv:2309.06240}, 2023.
+
+\end{thebibliography}
+
+\end{document}
