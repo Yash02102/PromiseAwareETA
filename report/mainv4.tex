@@ -1,4 +1,4 @@
-\documentclass[12pt,twocolumn]{article}
+\documentclass[12pt]{article}
 
 % ---------- Basic packages ----------
 \usepackage[margin=1in]{geometry}
@@ -30,7 +30,7 @@
 \title{Promise-Aware ETA: Calibrated Delivery-Time Uncertainty and Offline Delivery-Promise Optimization on the Olist E-Commerce Dataset}
 
 \author{
-  Your Name\thanks{Affiliation, address, email.}
+  Yash Rathod
 }
 
 \date{\today}
@@ -49,52 +49,32 @@ The main outcome of this work is not only a single model but a modular and leaka
 \end{abstract}
 
 \section{Introduction}
-Customers on e-commerce platforms have now come to expect a promised delivery date before they confirm their purchase. This promise is more than a convenience: it shapes the customer’s expectation, influences the decision to complete the order, and plays a major role in post-purchase satisfaction. When an order arrives after the promised date, trust in the platform reduces sharply and support as well as compensation costs tend to increase. On the other hand, if the promise is unnecessarily conservative, the platform may appear slow compared to competitors and some customers will drop out during checkout.
 
-In many production systems, promised dates are still derived from a relatively simple strategy: estimate a single expected delivery time for an order and then add a fixed or slowly tuned buffer, such as ``+2 days'' or ``maximum of model prediction and carrier service-level agreement''. This is easy to deploy and adjust, but in a marketplace such as Olist it runs into two main difficulties. First, delivery delays are heavy-tailed and depend strongly on geography, seller practices, and the state of the logistics network. Second, the question ``how much buffer is enough'' is not precise unless one formally specifies the cost of being late versus the cost of being early.
+Promised delivery dates are a central part of the customer experience in e-commerce. A clear and trustworthy promise influences a shopper’s decision to place an order and sets expectations for the entire post-purchase journey. When an order arrives later than promised, customer satisfaction drops sharply, and platforms incur additional support and compensation costs. At the same time, overly conservative promises can make a platform appear slow and less competitive.
 
-Recent work in forecasting and uncertainty quantification suggests that it is more appropriate to model the \emph{distribution} of delivery times rather than just a single point estimate \citep{koenker1978,koenker2001,lightgbm2017,zhang2023calibration}. Quantile regression and conformal prediction give two practical tools in this direction. Quantile models estimate conditional quantiles $Q_\tau(Y \mid X)$ of the delivery lag $Y$ given features $X$, and conformal prediction offers a way to adjust these quantiles so that the resulting prediction intervals achieve specified marginal coverage on new data \citep{romano2019conformalized,angelopoulos2021gentle}.
+In many operational settings, promised dates are still generated using point estimates along with ad-hoc buffers. While simple, this approach struggles in marketplaces like Olist where delivery times vary sharply across sellers, regions, and logistics corridors. In my initial exploration of the dataset, I found that delays are heavy-tailed and sensitive to seller behaviour and geography, which makes fixed padding insufficient.
 
-In this report I take a more operational viewpoint. Instead of only asking how accurate the ETAs are, I ask the following: given calibrated predictive uncertainty, how should a platform select a promised date so as to trade off the pain of being late against the opportunity cost of being conservative, and how stable is this trade-off across different regions and sellers? To study this, I focus on the Brazilian Olist marketplace dataset \citep{olistdataset} and build a pipeline that I refer to as \emph{Promise-Aware ETA}.
+Recent developments in uncertainty-aware prediction offer more principled alternatives. Quantile regression provides conditional quantile estimates rather than a single expected value, and conformal prediction offers distribution-free calibration to improve finite-sample coverage. Instead of producing a single ETA, these techniques allow the system to learn a full predictive distribution of delivery lag.
 
-\paragraph{Research questions.}
-The work is organised around three questions:
-\begin{enumerate}
-  \item \textbf{Calibration.} After applying split conformal prediction, can quantile models for order-level delivery lag achieve coverage close to the nominal level while keeping prediction intervals reasonably tight?
-  \item \textbf{Policy optimality.} Within a simple family of policies that promise at a calibrated quantile (for example, the median or the 0.9 quantile), which quantile choices minimise an asymmetric cost that penalises late deliveries more heavily than early ones?
-  \item \textbf{Fairness and robustness.} When performance is broken down by seller and region, do these quantile-based policies behave in a broadly consistent manner, or are there systematic disparities that would be problematic in a real marketplace?
-\end{enumerate}
+In this report, I develop \emph{Promise-Aware ETA}, a pipeline that uses quantile models and split conformal calibration to generate calibrated delivery-time intervals. These intervals are then used to evaluate and compare simple promise policies under an asymmetric cost model that penalises late deliveries more than early ones. The study uses the Brazilian E-Commerce Public Dataset by Olist, which provides a realistic setting with heterogeneous sellers and varied shipping behaviours.
 
-\paragraph{Contributions.}
-The key contributions of this report are as follows:
-\begin{itemize}
-  \item A leakage-safe feature engineering and modelling pipeline for the Olist dataset, with particular emphasis on seller history and geographical information, in addition to standard order-level features.
-  \item A conformalized quantile regression (CQR) setup that wraps base quantile models and produces calibrated prediction intervals with targeted coverage.
-  \item An offline promise-policy evaluator with an asymmetric cost function and group-wise diagnostics for regions and sellers.
-  \item Empirical evidence, on Olist, that a calibrated 0.9-quantile promise policy can both reduce expected cost and substantially increase coverage relative to a median-based promise.
-  \item A set of saved configurations, experiment summaries, and plots that make it easier to reproduce the results or to adapt the pipeline to other contexts.
-\end{itemize}
+My goal is not only to examine predictive accuracy but also to understand how calibrated promise policies behave across different regions and sellers. This helps identify whether a single global policy is adequate or whether disparities in coverage raise fairness concerns. The work is structured around four questions: (i) how well calibrated the prediction intervals are, (ii) how promise quantiles affect late-delivery risk and customer-facing promise lengths, (iii) how policies behave across segments, and (iv) how stable they are across regions and sellers.
+
+The remainder of the report describes the modelling framework, data sources, evaluation methods, empirical results, and implications for future work.
 
 \section{Related Work}
-\subsection{Delivery-time prediction and e-commerce logistics}
-The Brazilian E-Commerce Public Dataset by Olist has been widely used as a sandbox for analysing marketplace behaviour, logistics, and customer satisfaction \citep{olistdataset}. Several studies have taken this dataset or similar data and applied regression or machine learning models to predict delivery times based on order, seller, and product-level predictors \citep{brunilogistics2023,rokoss2024deliverytime}. Industry case studies from large retailers also describe internal ETA systems and show that improved delivery-time prediction can translate into higher conversion, better customer experience, and fewer support tickets \citep{walmart2019cdt,kardinal2025lastmile}.
 
-Beyond pure prediction, there is a significant body of work in operations research on last-mile logistics. In that area, machine learning has been combined with vehicle routing or scheduling algorithms to improve upon classical heuristics while respecting delivery-time constraints \citep{brunilogistics2023}. Many of these systems still assume some type of point ETA, sometimes with added safety margins.
+\subsection{Delivery-time prediction}
+A large body of work examines delivery-time modelling in e-commerce and logistics. The Olist dataset has been widely used for benchmarking delivery-time prediction and understanding marketplace dynamics. Prior studies typically apply regression or machine-learning models using order, seller, and product features to estimate delivery lag. Industrial case studies from major retailers also highlight the role of ETA systems in improving conversion and customer satisfaction.
 
-\subsection{Quantile regression and pinball loss}
-Quantile regression extends the usual squared-error regression by directly targeting conditional quantiles rather than the conditional mean \citep{koenker1978,koenker2001}. Instead of minimising squared error, quantile regression minimises the \emph{pinball} or \emph{check} loss, an asymmetric linear loss whose asymmetry parameter corresponds to the desired quantile. Over time, this idea has been extended to non-linear models such as quantile random forests, gradient-boosted quantile models, and deep networks trained with variants of the pinball loss \citep{biau2024pinball,tagasovska2019epinball}.
+\subsection{Quantile regression}
+Quantile regression provides a natural extension of classical regression by targeting conditional quantiles directly rather than the conditional mean. The pinball loss offers a simple and effective objective for learning these quantiles. Modern implementations using gradient-boosted decision trees, including LightGBM, have shown strong performance on structured datasets similar to Olist.
 
-For structured tabular data of the kind seen in Olist, gradient boosting decision trees, and in particular LightGBM, are a practical choice for quantile regression \citep{lightgbm2017}. They handle mixed feature types with limited preprocessing and scale well to medium-sized datasets.
+\subsection{Uncertainty calibration}
+Conformal prediction supplies distribution-free calibration for prediction intervals. Conformalized quantile regression (CQR) adapts conformal methods specifically for quantile models, adjusting their interval width based on calibration residuals. This approach helps correct the systematic under- or over-coverage often observed in raw quantile estimates.
 
-\subsection{Conformal prediction and calibration}
-Conformal prediction provides a general framework for converting point or interval predictors into prediction sets with finite-sample coverage guarantees under exchangeability \citep{vovk2005algorithmic,angelopoulos2021gentle}. Conformalized quantile regression (CQR) adapts this framework to the setting where base lower and upper quantiles are already available and adjusts them using calibration residuals \citep{romano2019conformalized}. Recent work has studied different choices of non-conformity scores and strategies for handling distribution shift or small calibration sets \citep{sousa2024adaptive,zhang2023calibration}.
-
-In parallel, the calibration literature provides several metrics and visual tools, such as reliability diagrams and coverage-based calibration errors, which help practitioners understand how well probabilistic or interval forecasts align with observed data \citep{guo2017calibration,levi2022uncertainty}. In this report, I focus primarily on straightforward coverage statistics, violation rates, and mean interval width.
-
-\subsection{Fairness and offline policy evaluation}
-The literature on algorithmic fairness contains multiple definitions of fairness and documents tensions between different fairness criteria and calibration \citep{barocas2019fairness,pleiss2017fairness,kleinberg2017impossibility}. In logistics and on-demand platforms, fairness has also been studied in the context of routing and work allocation for delivery workers \citep{gupta2022fairfoody,martinez2024fairrouting}. There is comparatively less work on fairness in customer-facing delivery promises, although the underlying concern about differential quality of service is similar.
-
-On the evaluation side, off-policy evaluation in contextual bandits and reinforcement learning offers a range of methods for estimating how a new policy would perform using logged data collected under a different policy. These include importance-weighted estimators and doubly robust estimators \citep{dudik2011doubly,jiang2016doubly}. The offline promise simulator in this report is intentionally simpler: it assumes that the realised delivery lag is independent of the promise shown to the customer, which is a reasonable first approximation for the Olist dataset.
+\subsection{Fairness and group-wise performance}
+Work in algorithmic fairness has shown that calibrated prediction intervals do not necessarily guarantee equal performance across groups. Group-level disparities may arise when data availability or structural differences vary across segments. Although fairness has been studied extensively in routing and delivery-work allocation, fairness in delivery-promise systems is comparatively less explored and is an emerging area of interest.
 
 \section{Materials and Data Sources}
 \subsection{Dataset}
@@ -411,8 +391,6 @@ On the Olist data, promising at the calibrated 0.9 quantile yields substantially
 
 There are several natural directions for future work. One direction is to enlarge the policy class and search over policies that satisfy explicit fairness constraints or service-level targets. Another direction is to incorporate additional features and real-time signals that are closer to what a deployed ETA system would observe. A third direction is to move beyond offline evaluation and explore online A/B testing or bandit-style learning, where customer behaviour and operational feedback can shape successive iterations of the model and the promise policy.
 
-\section*{Acknowledgments}
-[Optional: acknowledge advisors, mentors, or supporting organisations.]
 
 \bibliographystyle{plainnat}
 \begin{thebibliography}{99}

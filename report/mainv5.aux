@@ -1,0 +1,104 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{koenker1978,koenker2001}
+\citation{lightgbm2017}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{2}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Delivery-time prediction}{2}{subsection.2.1}\protected@file@percent }
+\citation{vovk2005algorithmic,angelopoulos2021gentle}
+\citation{romano2019conformalized}
+\citation{sousa2024adaptive}
+\citation{pleiss2017fairness,kleinberg2017impossibility}
+\citation{gupta2022fairfoody,martinez2024fairrouting}
+\citation{olistdataset}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Quantile regression}{3}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Uncertainty calibration}{3}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Fairness and group-wise performance}{3}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Materials and Data Sources}{3}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Dataset}{3}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Target definition}{4}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Feature engineering}{4}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Train--validation split}{4}{subsection.3.4}\protected@file@percent }
+\citation{lightgbm2017}
+\citation{romano2019conformalized}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Methods}{5}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Problem formulation}{5}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Base quantile models}{5}{subsection.4.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Pinball loss by quantile $\tau $ for baseline models on a synthetic benchmark dataset. Lower values indicate better fit.}}{6}{figure.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:f1-pinball}{{1}{6}{Pinball loss by quantile $\tau $ for baseline models on a synthetic benchmark dataset. Lower values indicate better fit}{figure.caption.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Split-conformal calibration}{6}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Promise policies and asymmetric cost}{6}{subsection.4.4}\protected@file@percent }
+\newlabel{fig:f2-reliability}{{2a}{7}{Empirical vs.\ nominal coverage}{figure.caption.2}{}}
+\newlabel{sub@fig:f2-reliability}{{a}{7}{Empirical vs.\ nominal coverage}{figure.caption.2}{}}
+\newlabel{fig:f3-width-coverage}{{2b}{7}{Interval width vs.\ target coverage}{figure.caption.2}{}}
+\newlabel{sub@fig:f3-width-coverage}{{b}{7}{Interval width vs.\ target coverage}{figure.caption.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Calibration and interval-width diagnostics for the conformalized quantile model.}}{7}{figure.caption.2}\protected@file@percent }
+\newlabel{fig:f2-f3}{{2}{7}{Calibration and interval-width diagnostics for the conformalized quantile model}{figure.caption.2}{}}
+\newlabel{fig:f4-cost-tau}{{3a}{7}{Expected cost vs.\ promise quantile $\tau $}{figure.caption.3}{}}
+\newlabel{sub@fig:f4-cost-tau}{{a}{7}{Expected cost vs.\ promise quantile $\tau $}{figure.caption.3}{}}
+\newlabel{fig:f5-lpr-apd}{{3b}{7}{LPR--APD frontier across quantiles}{figure.caption.3}{}}
+\newlabel{sub@fig:f5-lpr-apd}{{b}{7}{LPR--APD frontier across quantiles}{figure.caption.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Cost and service-level trade-offs as a function of the promise quantile.}}{7}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:f4-f5}{{3}{7}{Cost and service-level trade-offs as a function of the promise quantile}{figure.caption.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Policy metrics for two quantile-based promise policies on the Olist validation set. The cost uses $\lambda _{\text  {late}}=5$ and $\lambda _{\text  {early}}=1$.}}{8}{table.caption.4}\protected@file@percent }
+\newlabel{tab:policies}{{1}{8}{Policy metrics for two quantile-based promise policies on the Olist validation set. The cost uses $\lambda _{\text {late}}=5$ and $\lambda _{\text {early}}=1$}{table.caption.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Fairness metrics}{8}{subsection.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{8}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Calibration performance}{8}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Promise-policy comparison}{8}{subsection.5.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Regional fairness metrics for the p90 policy. Coverage and expected cost are reported along with differences and ratios versus reference regions.}}{9}{table.caption.5}\protected@file@percent }
+\newlabel{tab:regions}{{2}{9}{Regional fairness metrics for the p90 policy. Coverage and expected cost are reported along with differences and ratios versus reference regions}{table.caption.5}{}}
+\newlabel{fig:f7-region-coverage}{{4a}{9}{Regional coverage for $\tau =0.9$}{figure.caption.6}{}}
+\newlabel{sub@fig:f7-region-coverage}{{a}{9}{Regional coverage for $\tau =0.9$}{figure.caption.6}{}}
+\newlabel{fig:f8-seller-coverage}{{4b}{9}{Distribution of seller-level coverage}{figure.caption.6}{}}
+\newlabel{sub@fig:f8-seller-coverage}{{b}{9}{Distribution of seller-level coverage}{figure.caption.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Group-wise coverage at region and seller levels.}}{9}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:f7-f8}{{4}{9}{Group-wise coverage at region and seller levels}{figure.caption.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Regional fairness}{9}{subsection.5.3}\protected@file@percent }
+\citation{pleiss2017fairness,pfohl2021fairrisk}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Seller-level fairness}{10}{subsection.5.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Discussion}{10}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Interpretation}{10}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Fairness implications}{10}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Limitations}{10}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion and Future Work}{11}{section.7}\protected@file@percent }
+\bibstyle{plainnat}
+\bibcite{angelopoulos2021gentle}{{1}{2021}{{Angelopoulos \& Bates}}{{}}}
+\bibcite{barocas2019fairness}{{2}{2019}{{Barocas et al.}}{{}}}
+\bibcite{biau2024pinball}{{3}{2024}{{Biau \& Böhning}}{{}}}
+\bibcite{bruni2023lastmile}{{4}{2023}{{Bruni et al.}}{{}}}
+\bibcite{dudik2011doubly}{{5}{2011}{{Dudík, Langford \& Li}}{{}}}
+\bibcite{gabellini2024dl_supplychain}{{6}{2024}{{Gabellini et al.}}{{}}}
+\bibcite{eichenseer2025forecasting}{{7}{2025}{{Eichenseer et al.}}{{}}}
+\bibcite{koenker2001}{{8}{2001}{{Koenker}}{{}}}
+\bibcite{koenker1978}{{9}{1978}{{Koenker \& Bassett}}{{}}}
+\bibcite{ke2017lightgbm}{{10}{2017}{{Ke et al.}}{{}}}
+\bibcite{kup2024realtime}{{11}{2024}{{Küp, Küp \& Koçak}}{{}}}
+\bibcite{muller2025review}{{12}{2025}{{Müller et al.}}{{}}}
+\bibcite{rokoss2024delivery_prediction}{{13}{2024}{{Rokoss et al.}}{{}}}
+\bibcite{salari2022delivery_forecasting}{{14}{2022}{{Salari et al.}}{{}}}
+\bibcite{schutz2025ml_delay_review}{{15}{2025}{{Schütz }}{{}}}
+\bibcite{steinberg2023supplier_delay}{{16}{2023}{{Steinberg et al.}}{{}}}
+\bibcite{seyedan2020scm_bda}{{17}{2020}{{Seyedan et al.}}{{}}}
+\bibcite{shuaibu2025lastmile}{{18}{2025}{{Shuaibu et al.}}{{}}}
+\bibcite{tagasovska2019epinball}{{19}{2019}{{Tagasovska \& Lopez-Paz}}{{}}}
+\bibcite{ulku2024logistics_ml}{{20}{2024}{{Ülkü Küp et al.}}{{}}}
+\bibcite{romano2019cqr}{{21}{2019}{{Romano, Patterson \& Candès}}{{}}}
+\bibcite{vovk2005conformal}{{22}{2005}{{Vovk, Gammerman \& Shafer}}{{}}}
+\bibcite{yalcinkaya2024food_delivery}{{23}{2024}{{Yalçinkaya \& Areta Hızıroğlu}}{{}}}
+\bibcite{gabellini2024supply_delay}{{24}{2024}{{Gabellini et al.}}{{}}}
+\bibcite{zhou2022igt}{{25}{Zhou et al., 2022}{{IGT-WSDM23 }}{{}}}
+\bibcite{yi2025transpdt}{{26}{2025}{{Yi et al.}}{{}}}
+\bibcite{zhang2023deliverytime_estimation}{{27}{2023}{{Zhang et al.}}{{}}}
+\bibcite{gibbs2024onlinecp}{{28}{2024}{{Candès et~al.}}{{}}}
+\bibcite{aich2025tcp}{{29}{2025}{{Aich, Aich \& Jain}}{{}}}
+\bibcite{alijani2025wqlcp}{{30}{2025}{{Alijani et~al.}}{{}}}
+\bibcite{xu2020enbpi}{{31}{2020}{{Xu \& Xie}}{{}}}
+\bibcite{muller2025delivery_review}{{32}{2025}{{Müller et~al.}}{{}}}
+\bibcite{pegado2024route_framework}{{33}{2024}{{Pegado-Bardayo et~al.}}{{}}}
+\bibcite{wu2023lade_dataset}{{34}{2023}{{Wu et~al.}}{{}}}
+\bibcite{ulkukup2024real_time_delay}{{35}{2024}{{Ülkü Küp, Küp \& Koçak}}{{}}}
+\gdef \@abspage@last{15}
