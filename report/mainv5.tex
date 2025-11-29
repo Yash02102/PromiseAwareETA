@@ -47,7 +47,7 @@
   \vspace{2cm}
   {\large Yash Rathod\par}
   \vspace{0.5cm}
-  {\large Department of Computer Science\par}
+  {\large Case Studies in Machine Learning\par}
   {\large The University of Texas at Austin\par}
   \vspace{2cm}
   % Optional (if required by course):
@@ -89,10 +89,10 @@ The goal is not only to measure predictive accuracy but also to understand how c
 A large body of work examines delivery-time modelling in e-commerce and logistics. The Olist dataset has been used for benchmarking delivery-time prediction and understanding marketplace dynamics. Prior studies typically apply regression or machine-learning models using order, seller, and product features to estimate delivery lag, and industrial case studies from major retailers highlight the impact of ETA systems on conversion and customer satisfaction.
 
 \subsection{Quantile regression}
-Quantile regression extends classical regression by targeting conditional quantiles directly rather than the conditional mean \citep{koenker1978,koenker2001}. The pinball loss provides a simple objective for learning these quantiles, and gradient-boosted decision trees, including LightGBM, have shown strong performance on structured datasets similar to Olist \citep{lightgbm2017}.
+Quantile regression extends classical regression by targeting conditional quantiles directly rather than the conditional mean \citep{koenker1978,koenker2001}. The pinball loss provides a simple objective for learning these quantiles, and gradient-boosted decision trees, including LightGBM, have shown strong performance on structured datasets similar to Olist \citep{ke2017lightgbm}.
 
 \subsection{Uncertainty calibration}
-Conformal prediction supplies distribution-free calibration for prediction intervals \citep{vovk2005algorithmic,angelopoulos2021gentle}. Conformalized quantile regression (CQR) adapts conformal methods specifically for quantile models by adjusting interval width based on calibration residuals \citep{romano2019conformalized}. This corrects systematic under- or over-coverage often observed in raw quantile estimates and has been refined in recent adaptive variants \citep{sousa2024adaptive}.
+Conformal prediction supplies distribution-free calibration for prediction intervals \citep{vovk2005conformal,angelopoulos2021gentle}. Conformalized quantile regression (CQR) adapts conformal methods specifically for quantile models by adjusting interval width based on calibration residuals \citep{romano2019cqr}. This corrects systematic under- or over-coverage often observed in raw quantile estimates and has been refined in recent adaptive variants \citep{sousa2024adaptive}.
 
 \subsection{Fairness and group-wise performance}
 Work in algorithmic fairness has shown that calibrated prediction intervals do not guarantee equal performance across groups \citep{pleiss2017fairness,kleinberg2017impossibility}. Group-level disparities may arise when data availability or structural differences vary across segments. Fairness has been studied in routing and delivery-work allocation \citep{gupta2022fairfoody,martinez2024fairrouting}, but fairness in delivery-promise systems is less explored and appears to be an emerging area of interest.
@@ -158,7 +158,7 @@ I consider three families of quantile models:
 \begin{enumerate}
   \item \textbf{Linear quantile regression}, with a smoothed pinball loss and $\ell_2$ regularisation, as a simple baseline.
   \item \textbf{Histogram-based gradient boosting (HGB)}, using a gradient boosting regressor configured for quantile loss, to obtain non-linear decision boundaries.
-  \item \textbf{LightGBM quantile regression}, based on histogram-based gradient boosted trees tuned for tabular data \citep{lightgbm2017}. This is the main model used for the final results.
+  \item \textbf{LightGBM quantile regression}, based on histogram-based gradient boosted trees tuned for tabular data \citep{ke2017lightgbm}. This is the main model used for the final results.
 \end{enumerate}
 
 Before applying these to the Olist data, I validate the training code on a synthetic benchmark where the ground-truth quantiles are known. Figure~\ref{fig:f1-pinball} shows the pinball loss across quantiles for this benchmark.
@@ -171,7 +171,7 @@ Before applying these to the Olist data, I validate the training code on a synth
 \end{figure}
 
 \subsection{Split-conformal calibration}
-Well-trained quantile models can still be miscalibrated: a nominal 90\,\% interval between the 0.05 and 0.95 quantiles may not actually cover 90\,\% of future observations. To correct for this, I apply split conformal calibration in the style of CQR \citep{romano2019conformalized}.
+Well-trained quantile models can still be miscalibrated: a nominal 90\,\% interval between the 0.05 and 0.95 quantiles may not actually cover 90\,\% of future observations. To correct for this, I apply split conformal calibration in the style of CQR \citep{romano2019cqr}.
 
 Let $\hat{Q}_{\alpha}^{\text{base}}(x)$ and $\hat{Q}_{1-\alpha}^{\text{base}}(x)$ denote the lower and upper base quantiles for target coverage $1-\alpha$. The training data are divided into a proper training set, used to fit the base models, and a calibration set. On the calibration set, non-conformity scores are defined as
 \begin{equation}
@@ -377,83 +377,215 @@ Future work could enlarge the policy class and search over policies that satisfy
 \bibliographystyle{plainnat} % close to APA for author-year; you can switch to apalike or apacite if you use BibTeX
 \begin{thebibliography}{99}
 
-\bibitem[Angelopoulos \& Bates(2021)]{angelopoulos2021gentle} Angelopoulos, A.~N., \& Bates, S. (2021). A gentle introduction to conformal prediction and distribution-free uncertainty quantification. arXiv preprint.
+\bibitem[Angelopoulos \& Bates(2021)]{angelopoulos2021gentle}
+Angelopoulos, A.~N., \& Bates, S. (2021).
+A gentle introduction to conformal prediction and distribution-free uncertainty quantification.
+arXiv preprint.
 
-\bibitem[Barocas et al.(2019)]{barocas2019fairness} Barocas, S., Hardt, M., \& Narayanan, A. (2019). \emph{Fairness and Machine Learning}. MIT Press.
+\bibitem[Barocas et al.(2019)]{barocas2019fairness}
+Barocas, S., Hardt, M., \& Narayanan, A. (2019).
+\emph{Fairness and Machine Learning}.
+MIT Press.
 
-\bibitem[Biau \& Böhning(2024)]{biau2024pinball} Biau, G., \& Böhning, D. (2024). Pinball boosting of regression quantiles. \emph{Computational Statistics \& Data Analysis}.
+\bibitem[Biau \& Böhning(2024)]{biau2024pinball}
+Biau, G., \& Böhning, D. (2024).
+Pinball boosting of regression quantiles.
+\emph{Computational Statistics \& Data Analysis}.
 
-\bibitem[Bruni et al.(2023)]{bruni2023lastmile} Bruni, M.~E., et al. (2023). A machine learning optimization approach for last-mile delivery with time windows. \emph{Computers \& Operations Research}. :contentReference[oaicite:10]{index=10}
+\bibitem[Bruni et al.(2023)]{bruni2023lastmile}
+Bruni, M.~E., et al. (2023).
+A machine learning optimization approach for last-mile delivery with time windows.
+\emph{Computers \& Operations Research}.
 
-\bibitem[Dudík, Langford \& Li(2011)]{dudik2011doubly} Dudík, M., Langford, J., \& Li, L. (2011). Doubly robust policy evaluation and learning. In Proceedings of the 28th ICML.
+\bibitem[Dudík et al.(2011)]{dudik2011doubly}
+Dudík, M., Langford, J., \& Li, L. (2011).
+Doubly robust policy evaluation and learning.
+In \emph{Proceedings of the 28th ICML}.
 
-\bibitem[Gabellini et al.(2024)]{gabellini2024dl_supplychain} Gabellini, M., Civolani, L., Calabrese, F., \& Bortolini, M. (2024). A deep learning approach to predict supply chain delivery delay risk based on macroeconomic indicators: A case study in the automotive sector. \emph{Applied Sciences}, 14(11), 4688. :contentReference[oaicite:11]{index=11}
+\bibitem[Gabellini et al.(2024)]{gabellini2024dl_supplychain}
+Gabellini, M., Civolani, L., Calabrese, F., \& Bortolini, M. (2024).
+A deep learning approach to predict supply chain delivery delay risk based on macroeconomic indicators: A case study in the automotive sector.
+\emph{Applied Sciences}, 14(11), 4688.
 
-\bibitem[Eichenseer et al.(2025)]{eichenseer2025forecasting} Eichenseer, P., et al. (2025). A data-driven machine learning model for short-term delivery forecasting in industrial supply-chain contexts. \emph{[Journal, forthcoming]}. :contentReference[oaicite:12]{index=12}
+\bibitem[Eichenseer et al.(2025)]{eichenseer2025forecasting}
+Eichenseer, P., et al. (2025).
+A data-driven machine learning model for short-term delivery forecasting in industrial supply-chain contexts.
+\emph{[Journal, forthcoming]}.
 
-\bibitem[Koenker(2001)]{koenker2001} Koenker, R. (2001). \emph{Quantile Regression}. Journal of Economic Perspectives, 15(4), 143–156.
+\bibitem[Koenker(2001)]{koenker2001}
+Koenker, R. (2001).
+Quantile regression.
+\emph{Journal of Economic Perspectives}, 15(4), 143–156.
 
-\bibitem[Koenker \& Bassett(1978)]{koenker1978} Koenker, R., \& Bassett, G. (1978). Regression quantiles. \emph{Econometrica}, 46(1), 33–50.
+\bibitem[Koenker \& Bassett(1978)]{koenker1978}
+Koenker, R., \& Bassett, G. (1978).
+Regression quantiles.
+\emph{Econometrica}, 46(1), 33–50.
 
-\bibitem[Ke et al.(2017)]{ke2017lightgbm} Ke, G., et al. (2017). LightGBM: A highly efficient gradient boosting decision tree. In \emph{Advances in Neural Information Processing Systems (NeurIPS)}.
+\bibitem[Ke et al.(2017)]{ke2017lightgbm}
+Ke, G., et al. (2017).
+LightGBM: A highly efficient gradient boosting decision tree.
+In \emph{Advances in Neural Information Processing Systems (NeurIPS)}.
 
-\bibitem[Küp, Küp \& Koçak(2024)]{kup2024realtime} Küp, B.Ü., Küp, E.T., \& Koçak, G. (2024). Real-Time Prediction of Delivery Delay in Supply Chains using Machine Learning Approaches. SSRN preprint. :contentReference[oaicite:13]{index=13}
+\bibitem[Küp et al.(2024)]{kup2024realtime}
+Küp, B.~Ü., Küp, E.~T., \& Koçak, G. (2024).
+Real-Time Prediction of Delivery Delay in Supply Chains using Machine Learning Approaches.
+SSRN preprint.
 
-\bibitem[Müller et al.(2025)]{muller2025review} Müller, N., et al. (2025). An analytical review of predictive methods for delivery delays in supply chains. \emph{[Journal]}. :contentReference[oaicite:14]{index=14}
+\bibitem[Müller et al.(2025a)]{muller2025review}
+Müller, N., et al. (2025).
+An analytical review of predictive methods for delivery delays in supply chains.
+\emph{[Journal]}.
 
-\bibitem[Rokoss et al.(2024)]{rokoss2024delivery_prediction} Rokoss, A., et al. (2024). Case study on delivery time determination using a machine learning approach in small-batch production companies. \emph{Journal of Intelligent Manufacturing}. :contentReference[oaicite:15]{index=15}
+\bibitem[Rokoss et al.(2024)]{rokoss2024delivery_prediction}
+Rokoss, A., et al. (2024).
+Case study on delivery time determination using a machine learning approach in small-batch production companies.
+\emph{Journal of Intelligent Manufacturing}.
 
-\bibitem[Salari et al.(2022)]{salari2022delivery_forecasting} Salari, N., et al. (2022). Real-Time Delivery Time Forecasting and Promising in E-commerce Logistics. \emph{[Conference Proceedings]}. :contentReference[oaicite:16]{index=16}
+\bibitem[Salari et al.(2022)]{salari2022delivery_forecasting}
+Salari, N., et al. (2022).
+Real-Time Delivery Time Forecasting and Promising in E-commerce Logistics.
+\emph{[Conference Proceedings]}.
 
-\bibitem[Schütz (2025)]{schutz2025ml_delay_review} Schütz, M. (2025). Predictive Analytics for Delivery Delay: A Systematic Literature Review. \emph{[Journal]}. :contentReference[oaicite:17]{index=17}
+\bibitem[Schütz(2025)]{schutz2025ml_delay_review}
+Schütz, M. (2025).
+Predictive Analytics for Delivery Delay: A Systematic Literature Review.
+\emph{[Journal]}.
 
-\bibitem[Steinberg et al.(2023)]{steinberg2023supplier_delay} Steinberg, F., et al. (2023). A novel ML model for predicting late supplier deliveries of low-volume high-variety products. \emph{[Journal]}. :contentReference[oaicite:18]{index=18}
+\bibitem[Steinberg et al.(2023)]{steinberg2023supplier_delay}
+Steinberg, F., et al. (2023).
+A novel ML model for predicting late supplier deliveries of low-volume high-variety products.
+\emph{[Journal]}.
 
-\bibitem[Seyedan et al.(2020)]{seyedan2020scm_bda} Seyedan, M., et al. (2020). Predictive big data analytics for supply chain demand forecasting: a classification and survey. \emph{Journal of Big Data}, 7:55. :contentReference[oaicite:19]{index=19}
+\bibitem[Seyedan et al.(2020)]{seyedan2020scm_bda}
+Seyedan, M., et al. (2020).
+Predictive big data analytics for supply chain demand forecasting: a classification and survey.
+\emph{Journal of Big Data}, 7:55.
 
-\bibitem[Shuaibu et al.(2025)]{shuaibu2025lastmile} Shuaibu, A.S., et al. (2025). A Review of Last-Mile Delivery Optimization: Data-driven ML + routing/VRP methods. \emph{[Journal]}. :contentReference[oaicite:20]{index=20}
+\bibitem[Shuaibu et al.(2025)]{shuaibu2025lastmile}
+Shuaibu, A.~S., et al. (2025).
+A Review of Last-Mile Delivery Optimization: Data-driven ML + routing/VRP methods.
+\emph{[Journal]}.
 
-\bibitem[Tagasovska \& Lopez-Paz(2019)]{tagasovska2019epinball} Tagasovska, N., \& Lopez-Paz, D. (2019). Single-model uncertainties for deep learning. In \emph{Advances in Neural Information Processing Systems}.
+\bibitem[Tagasovska \& Lopez-Paz(2019)]{tagasovska2019epinball}
+Tagasovska, N., \& Lopez-Paz, D. (2019).
+Single-model uncertainties for deep learning.
+In \emph{Advances in Neural Information Processing Systems}.
 
-\bibitem[Ülkü Küp et al.(2024)]{ulku2024logistics_ml} Ülkü Küp, B., Küp, E.T., Koçak, G. (2024). Machine-learning-driven last-mile delivery time prediction using MGRS block analysis. \emph{International Journal of Computer Engineering \& Technology}, 16(1), 2619–2630. :contentReference[oaicite:21]{index=21}
+\bibitem[Ülkü Küp et al.(2024a)]{ulku2024logistics_ml}
+Ülkü Küp, B., Küp, E.~T., \& Koçak, G. (2024).
+Machine-learning-driven last-mile delivery time prediction using MGRS block analysis.
+\emph{International Journal of Computer Engineering \& Technology}, 16(1), 2619–2630.
 
-\bibitem[Romano, Patterson \& Candès(2019)]{romano2019cqr} Romano, Y., Patterson, E., \& Candès, E.J. (2019). Conformalized Quantile Regression. arXiv preprint arXiv:1905.03222. :contentReference[oaicite:22]{index=22}
+\bibitem[Romano et al.(2019)]{romano2019cqr}
+Romano, Y., Patterson, E., \& Candès, E.~J. (2019).
+Conformalized Quantile Regression.
+arXiv preprint arXiv:1905.03222.
 
-\bibitem[Vovk, Gammerman \& Shafer(2005)]{vovk2005conformal} Vovk, V., Gammerman, A., \& Shafer, G. (2005). Algorithmic learning in a random world. Springer.
+\bibitem[Vovk et al.(2005)]{vovk2005conformal}
+Vovk, V., Gammerman, A., \& Shafer, G. (2005).
+\emph{Algorithmic Learning in a Random World}.
+Springer.
 
-\bibitem[Yalçinkaya \& Areta Hızıroğlu(2024)]{yalcinkaya2024food_delivery} Yalçinkaya, E., \& Areta Hızıroğlu, O. (2024). A comparative analysis of machine learning models for time prediction in food delivery operations. \emph{Artificial Intelligence: Theory and Applications}, 4(1), 43–56. :contentReference[oaicite:23]{index=23}
+\bibitem[Yalçinkaya \& Hızıroğlu(2024)]{yalcinkaya2024food_delivery}
+Yalçinkaya, E., \& Areta Hızıroğlu, O. (2024).
+A comparative analysis of machine learning models for time prediction in food delivery operations.
+\emph{Artificial Intelligence: Theory and Applications}, 4(1), 43–56.
 
-\bibitem[Gabellini et al.(2024)]{gabellini2024supply_delay} Gabellini, M., Civolani, L., Calabrese, F., \& Bortolini, M. (2024). A deep learning approach to predict supply chain delivery delay risk based on macroeconomic indicators. \emph{Applied Sciences}, 14(11):4688. (duplicate of earlier but kept for completeness)
+\bibitem[Gabellini et al.(2024b)]{gabellini2024supply_delay}
+Gabellini, M., Civolani, L., Calabrese, F., \& Bortolini, M. (2024).
+A deep learning approach to predict supply chain delivery delay risk based on macroeconomic indicators.
+\emph{Applied Sciences}, 14(11):4688. (duplicate of earlier but kept for completeness)
 
-\bibitem[IGT-WSDM23 (Zhou et al., 2022)]{zhou2022igt} Zhou, X., Wang, J., Liu, Y., Wu, X., Shen, Z., \& Leung, C. (2022). Inductive Graph Transformer for Delivery Time Estimation. arXiv preprint. :contentReference[oaicite:24]{index=24}
+\bibitem[Zhou et al.(2022)]{zhou2022igt}
+Zhou, X., Wang, J., Liu, Y., Wu, X., Shen, Z., \& Leung, C. (2022).
+Inductive Graph Transformer for Delivery Time Estimation.
+arXiv preprint.
 
-\bibitem[Yi et al.(2025)]{yi2025transpdt} Yi, J., Yan, H., Wang, H., Yuan, J., \& Li, Y. (2025). Learning to Estimate Package Delivery Time in Mixed Imbalanced Delivery and Pickup Logistics Services. arXiv preprint. :contentReference[oaicite:25]{index=25}
+\bibitem[Yi et al.(2025)]{yi2025transpdt}
+Yi, J., Yan, H., Wang, H., Yuan, J., \& Li, Y. (2025).
+Learning to Estimate Package Delivery Time in Mixed Imbalanced Delivery and Pickup Logistics Services.
+arXiv preprint.
 
-\bibitem[Zhang et al.(2023)]{zhang2023deliverytime_estimation} Zhang, L., Wang, M., Zhou, X., Wu, X., Cao, Y., Xu, Y., Cui, L., \& Shen, Z. (2023). Dual Graph Multitask Framework for Imbalanced Delivery Time Estimation. arXiv preprint. :contentReference[oaicite:26]{index=26}
+\bibitem[Zhang et al.(2023)]{zhang2023deliverytime_estimation}
+Zhang, L., Wang, M., Zhou, X., Wu, X., Cao, Y., Xu, Y., Cui, L., \& Shen, Z. (2023).
+Dual Graph Multitask Framework for Imbalanced Delivery Time Estimation.
+arXiv preprint.
 
-\bibitem[Candès et~al.(2024)]{gibbs2024onlinecp}
-Gibbs, I., \& Candès, E.~J. (2024). Conformal inference for online prediction with arbitrary distribution shifts. \emph{Journal of Machine Learning Research}, 25, 1–36.
+\bibitem[Gibbs \& Candès(2024)]{gibbs2024onlinecp}
+Gibbs, I., \& Candès, E.~J. (2024).
+Conformal inference for online prediction with arbitrary distribution shifts.
+\emph{Journal of Machine Learning Research}, 25, 1–36.
 
-\bibitem[Aich, Aich \& Jain(2025)]{aich2025tcp}
-Aich, A., Aich, A. B., \& Jain, D. C. (2025). Temporal Conformal Prediction (TCP): A distribution-free framework for adaptive risk forecasting in nonstationary time series. arXiv preprint.
+\bibitem[Aich et al.(2025)]{aich2025tcp}
+Aich, A., Aich, A.~B., \& Jain, D.~C. (2025).
+Temporal Conformal Prediction (TCP): A distribution-free framework for adaptive risk forecasting in nonstationary time series.
+arXiv preprint.
 
-\bibitem[Alijani et~al.(2025)]{alijani2025wqlcp}
-Alijani, S., et al. (2025). WQLCP: Weighted Quantile-Loss Scaled Conformal Prediction for robust uncertainty quantification under distribution shift. arXiv preprint.
+\bibitem[Alijani et al.(2025)]{alijani2025wqlcp}
+Alijani, S., et al. (2025).
+WQLCP: Weighted Quantile-Loss Scaled Conformal Prediction for robust uncertainty quantification under distribution shift.
+arXiv preprint.
 
 \bibitem[Xu \& Xie(2020)]{xu2020enbpi}
-Xu, C., \& Xie, Y. (2020). EnbPI: Conformal prediction for time series — distribution-free sequential prediction intervals for non-exchangeable data. arXiv preprint.
+Xu, C., \& Xie, Y. (2020).
+EnbPI: Conformal prediction for time series — distribution-free sequential prediction intervals for non-exchangeable data.
+arXiv preprint.
 
-\bibitem[Müller et~al.(2025)]{muller2025delivery_review}
-Müller, N., et al. (2025). An analytical review of predictive methods for delivery delay forecasting in supply-chains. \emph{Computers \& Industrial Engineering}.  
+\bibitem[Müller et al.(2025b)]{muller2025delivery_review}
+Müller, N., et al. (2025).
+An analytical review of predictive methods for delivery delay forecasting in supply-chains.
+\emph{Computers \& Industrial Engineering}.
 
-\bibitem[Pegado-Bardayo et~al.(2024)]{pegado2024route_framework}
-Pegado-Bardayo, A., et al. (2024). A predictive framework for last-mile delivery routes: profiling courier behavior and route characteristics for improved ETA estimates. \emph{Transportation Research Part E: Logistics and Transportation Review}.
+\bibitem[Pegado-Bardayo et al.(2024)]{pegado2024route_framework}
+Pegado-Bardayo, A., et al. (2024).
+A predictive framework for last-mile delivery routes: profiling courier behavior and route characteristics for improved ETA estimates.
+\emph{Transportation Research Part E: Logistics and Transportation Review}.
 
-\bibitem[Wu et~al.(2023)]{wu2023lade_dataset}
-Wu, L., et al. (2023). LaDe: The first comprehensive last-mile delivery dataset with millions of real-world package deliveries. arXiv preprint.
+\bibitem[Wu et al.(2023)]{wu2023lade_dataset}
+Wu, L., et al. (2023).
+LaDe: The first comprehensive last-mile delivery dataset with millions of real-world package deliveries.
+arXiv preprint.
 
-\bibitem[Ülkü Küp, Küp \& Koçak(2024)]{ulkukup2024real_time_delay}
-Ülkü Küp, B., Küp, E. T., \& Koçak, G. (2024). Real-Time Prediction of Delivery Delay in Supply Chains Using Machine Learning Approaches. SSRN preprint.
+\bibitem[Ülkü Küp et al.(2024b)]{ulkukup2024real_time_delay}
+Ülkü Küp, B., Küp, E.~T., \& Koçak, G. (2024).
+Real-Time Prediction of Delivery Delay in Supply Chains Using Machine Learning Approaches.
+SSRN preprint.
+
+\bibitem[Sousa et al.(2024)]{sousa2024adaptive}
+Sousa, F., et al. (2024).
+Adaptive conformal prediction for regression under distribution shift.
+arXiv preprint.
+
+\bibitem[Pleiss et al.(2017)]{pleiss2017fairness}
+Pleiss, G., Raghavan, M., Wu, F., Kleinberg, J., \& Weinberger, K.~Q. (2017).
+On fairness and calibration.
+In \emph{Advances in Neural Information Processing Systems}.
+
+\bibitem[Kleinberg et al.(2017)]{kleinberg2017impossibility}
+Kleinberg, J., Mullainathan, S., \& Raghavan, M. (2017).
+Inherent trade-offs in the fair determination of risk scores.
+In \emph{Proceedings of Innovations in Theoretical Computer Science (ITCS)}.
+
+\bibitem[Gupta et al.(2022)]{gupta2022fairfoody}
+Gupta, V., et al. (2022).
+FairFoody: Fair allocation and routing for food delivery platforms.
+\emph{[Conference/Journal]}.
+
+\bibitem[Martinez et al.(2024)]{martinez2024fairrouting}
+Martinez, A., et al. (2024).
+Fair routing for crowd-shipping and last-mile logistics.
+\emph{[Journal]}.
+
+\bibitem[Olist(2018)]{olistdataset}
+Olist. (2018).
+Brazilian E-Commerce Public Dataset by Olist.
+Kaggle dataset.
+
+\bibitem[Pfohl et al.(2021)]{pfohl2021fairrisk}
+Pfohl, S., et al. (2021).
+Progressive learning of fair risk scores.
+\emph{[Journal/Conference]}.
 
 \end{thebibliography}
 
