@@ -2,10 +2,12 @@
 name = "promise-aware-eta"
 version = "0.1.0"
 description = "Promise-Aware ETA and delivery promise tuning research pipeline"
+readme = "README.md"
 requires-python = ">=3.11"
 authors = [
-  { name = "PromiseAwareETA Team" }
+  { name = "Yash Rathod" }
 ]
+license = { file = "LICENSE" }
 dependencies = [
   "pandas>=2.1",
   "numpy>=1.24",
@@ -23,6 +25,11 @@ dev = [
   "ruff>=0.4",
   "ipykernel>=6.25"
 ]
+
+[project.urls]
+Homepage = "https://github.com/Yash02102/PromiseAwareETA"
+Repository = "https://github.com/Yash02102/PromiseAwareETA"
+Issues = "https://github.com/Yash02102/PromiseAwareETA/issues"
 
 [build-system]
 requires = ["hatchling>=1.24"]
